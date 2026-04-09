@@ -2,7 +2,7 @@
 
 ## Document Status
 
-- Status: Draft
+- Status: Approved
 - Source:
   - `docs/discovery/requirements-scope-questions.md`
   - `docs/discovery/prd-refinement-questions.md`
@@ -264,3 +264,4 @@ SnapInsight 是一个面向 Chrome 桌面浏览器的本地辅助理解插件。
 
 - Initial draft created from discovery documents.
 - Major refinement completed for scope definition, support boundary, flow structure, model-selection rules, streaming requirement, and acceptance criteria.
+- Document status updated to `Approved` after PRD completion and review.
