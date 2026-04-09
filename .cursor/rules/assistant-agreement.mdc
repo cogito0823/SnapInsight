@@ -1,0 +1,298 @@
+---
+description: Document-driven collaboration and document lifecycle rules
+alwaysApply: true
+---
+
+# Document-Driven Collaboration
+
+This document defines the working agreement for collaboration between the project owner and the assistant.
+
+The default rule is simple: discussions, clarification, and decisions should be captured in project documents instead of being left only in chat messages.
+
+## Core Principle
+
+The assistant and the project owner should use documents as the primary medium for discussion and decision-making.
+
+Chat is used to:
+- request updates
+- point to a target document with `@path`
+- ask for clarification
+- confirm the next step
+
+Project documents are used to:
+- collect open questions
+- compare options
+- record decisions
+- define implementation guidance
+
+## Operating Model
+
+### 1. Start with documents
+
+When discussing a topic, prefer referencing an existing document such as:
+- `@docs/discovery/requirements-scope-questions.md`
+- `@docs/rfcs/RFC-001-architecture-options.md`
+
+If no suitable document exists yet, create one before continuing the discussion in depth.
+
+### 2. Use `discovery/` for clarification
+
+Use `docs/discovery/` when the topic is still exploratory.
+
+Typical cases:
+- unclear requirements
+- open questions
+- competing assumptions
+- rough notes
+- draft scope definitions
+
+Rules:
+- discovery documents may contain unresolved items
+- discovery documents may contain temporary contradictions
+- discovery documents should be progressively cleaned up as understanding improves
+- discovery documents are not the final implementation source of truth
+- discovery documents should be split by major topic instead of growing into one large running note
+- when a discovery document becomes too broad, create a new topic-specific discovery document
+
+### 3. Use `rfcs/` for option comparison and decisions
+
+Use `docs/rfcs/` when the topic requires a real decision.
+
+Typical cases:
+- multiple architecture choices
+- technical tradeoffs
+- integration strategy selection
+- UI behavior alternatives with meaningful tradeoffs
+
+Rules:
+- each RFC should focus on one decision topic
+- each RFC should describe context, options, tradeoffs, recommendation, and decision status
+- once accepted, the RFC becomes the formal decision reference for that topic
+
+RFC status naming:
+- use `Draft` while the RFC is being written
+- use `In Review` while the RFC is under review
+- use `Accepted` when the RFC decision is adopted
+- use `Rejected` when the RFC is declined
+- use `Superseded` when a later RFC replaces it
+
+### 4. Use implementation documents after decisions are made
+
+After requirements and decisions are stable, the resulting guidance should be written into:
+- `docs/prd/`
+- `docs/design/`
+- `docs/specs/`
+- `docs/plans/`
+
+Rules:
+- these documents should not be used as scratchpads for unresolved debates
+- if a major unresolved option appears, move the discussion back into `discovery/` or `rfcs/`
+- interface fields, schemas, payloads, and protocol details belong in `docs/specs/`
+
+## Conversation Rules
+
+The assistant should treat document updates as part of the collaboration flow, not as optional afterthoughts.
+
+Rules:
+- if the user wants to discuss a topic, the assistant should prefer updating or creating a related document
+- if the user references a file with `@path`, that file becomes the primary discussion surface
+- if the discussion produces new decisions, the assistant should record them in the appropriate document
+- if the discussion reveals ambiguity, the assistant should add explicit questions to the relevant discovery file
+- if an earlier document conflicts with a later accepted decision, the later accepted decision wins
+- for discovery-style work, the assistant should prefer writing questions into the document, let the user answer in the document, and then read the updated document before proceeding
+
+## Decision Flow
+
+The default decision flow for this project is:
+
+1. Clarify the topic in `docs/discovery/`
+2. Promote decision-worthy topics into `docs/rfcs/`
+3. Mark the chosen RFC direction explicitly
+4. Reflect the accepted outcome in `docs/prd/`, `docs/design/`, `docs/specs/`, or `docs/plans/`
+
+## Document Lifecycle
+
+Documents may keep stable file names while moving through different maturity stages.
+
+For example, `docs/prd/PRD-snapinsight.md` remains the PRD file throughout its lifecycle. Its maturity is tracked by document status rather than by renaming the file.
+
+Recommended lifecycle states:
+- `Draft`: early version, still incomplete
+- `In Discussion`: actively being refined through discussion
+- `In Review`: ready for structured review
+- `Approved`: accepted as the current reference
+- `Implemented`: already reflected in implementation
+- `Superseded`: replaced by a newer document or decision
+
+Rules:
+- do not rename documents just to represent maturity changes
+- use status fields inside the document to show current maturity
+- keep major document categories stable throughout the project lifecycle
+- approval status must be written explicitly in the document
+- use `Accepted` / `Rejected` for RFCs
+- use `Approved` for PRDs, design documents, spec documents, and plan documents
+
+## Review and Approval Rules
+
+Formal documents such as PRDs, RFCs, and design documents should move through a lightweight but explicit review flow.
+
+Recommended flow:
+1. create the first `Draft`
+2. refine through `discovery/` discussion and targeted edits
+3. move unresolved decision topics into `rfcs/` when needed
+4. return to the target document and update it with accepted decisions
+5. mark the document `In Review`
+6. once key open issues are cleared, mark it `Approved`
+
+Rules:
+- `Draft` documents are allowed to be incomplete
+- `Approved` documents should not contain unresolved issues that materially affect implementation
+- if a document is approved and a new major unresolved issue appears, move the issue back into `discovery/` or `rfcs/` and then update the document again
+- the project owner decides whether a document is approved
+- the assistant may recommend moving a document to `In Review` or `Approved`, but may not approve it on behalf of the project owner
+
+## RFC Trigger Rules
+
+Follow industry-style RFC discipline for changes that are important enough to benefit from written option comparison.
+
+Create an RFC when a topic has one or more of the following characteristics:
+- there are multiple viable approaches with meaningful tradeoffs
+- the decision affects architecture, system boundaries, or long-term maintainability
+- the decision affects multiple modules or document types
+- the decision changes interfaces, integration contracts, or operational behavior
+- the decision would be expensive or disruptive to reverse later
+- the decision needs explicit recommendation and approval
+
+It is usually not necessary to create an RFC when:
+- the change is local and low-risk
+- the change is editorial only
+- the implementation direction is already obvious from an accepted document
+- no meaningful alternative is being considered
+
+Numbering rules:
+- RFC numbering does not need to be strictly consecutive
+- gaps in numbering are acceptable
+- the goal of numbering is traceability, not perfect sequence
+
+## Approval Criteria by Document Type
+
+### PRD
+
+A PRD is ready for approval when:
+- product goals are clear
+- target users and core use cases are clear
+- MVP scope and non-goals are clear
+- major interaction flows are defined
+- major failure and fallback scenarios are defined at a product level
+- acceptance criteria are testable enough for design and engineering work to continue
+- major unresolved technical decision points have either been settled or explicitly moved into RFCs
+
+### RFC
+
+An RFC is ready for approval when:
+- the decision topic is clearly scoped
+- alternatives are described
+- tradeoffs and risks are explained
+- a recommendation is stated
+- the final status is explicit
+
+### Design
+
+A design document is ready for approval when:
+- it follows the approved PRD and accepted RFCs
+- component or module responsibilities are clear
+- key flows and state transitions are defined
+- implementation assumptions and constraints are explicit
+
+### Spec
+
+A spec document is ready for approval when:
+- the related PRD and design direction are already stable enough
+- fields, payloads, schemas, or contracts are explicit
+- request and response expectations are clear where applicable
+- edge cases and validation rules are documented where they matter
+
+## When Discussion Must Be Documented
+
+Not every small chat exchange needs its own written note, but decisions that affect project direction should be captured in documents.
+
+Document the discussion when:
+- it changes product scope
+- it changes implementation direction
+- it resolves an open question
+- it introduces a new constraint or dependency
+- it creates a rule that will matter in future work
+
+It is acceptable to keep the discussion only in chat when:
+- the change is purely editorial
+- the wording is adjusted without changing meaning
+- the issue is very small and the final conclusion is directly applied to the target document
+
+Rule of thumb:
+- if the conclusion will matter later, write it down
+- if the conclusion changes how future documents or code will be written, write it down
+
+## Diagram Guidance
+
+Diagrams are recommended when they improve clarity, but they are not mandatory in every document.
+
+Rules:
+- a PRD does not always need diagrams
+- if a product flow is central and could be misunderstood, a lightweight flow diagram is recommended
+- interaction-heavy behavior should usually be captured in `docs/design/`
+- technical architecture diagrams belong in design documents or RFCs, depending on whether the architecture is still under discussion
+- use Mermaid for diagrams in project documents
+- whether a document needs diagrams can be decided at writing time
+
+Typical placement:
+- product-level user flow: `prd/` or `design/`
+- interaction state flow: `design/`
+- architecture comparison diagrams: `rfcs/`
+- final architecture diagrams: `design/`
+
+## Standard Document Metadata
+
+Formal documents should preferably include lightweight metadata near the top of the file.
+
+Recommended fields:
+- `Status`
+- `Related Documents`
+
+Rules:
+- do not emphasize version numbers in project documents
+- `Owner`, `Reviewers`, and version metadata are not required by default for this project
+- at minimum, `Status` should be present for PRDs and RFCs
+- `Related Documents` should be included when it materially helps navigation
+- document section templates do not need to be fixed globally in advance
+- headings and sections can be chosen when writing each document, as long as the document is clear and fit for purpose
+
+## PRD Change Tracking
+
+PRDs should record meaningful requirement changes over time.
+
+Rules:
+- PRDs should include a change record section
+- requirement changes that affect scope, behavior, acceptance, or constraints should be logged in the PRD
+- purely editorial fixes do not need detailed change records unless they clarify meaning materially
+
+## Practical Expectations
+
+For this project, the working expectation is:
+- discussions should be document-backed
+- important conclusions should be written down
+- chat alone should not be treated as the final record
+- the assistant should help keep discovery notes and decision records organized
+
+## Recommended Status Markers
+
+For better traceability, documents may use lightweight status markers such as:
+- `Draft`
+- `In Discussion`
+- `In Review`
+- `Accepted`
+- `Approved`
+- `Rejected`
+- `Implemented`
+- `Superseded`
+
+These are especially recommended for RFCs, PRDs, and design documents.
