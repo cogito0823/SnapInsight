@@ -110,6 +110,14 @@ function bindPressAction(
   });
 }
 
+function isHTMLElement(value: unknown): value is HTMLElement {
+  const ElementCtor = (
+    globalThis as typeof globalThis & { HTMLElement?: typeof HTMLElement }
+  ).HTMLElement;
+
+  return typeof ElementCtor === "function" && value instanceof ElementCtor;
+}
+
 function renderTrigger(anchorRect: AnchorRect): string {
   return `
     <button
@@ -123,7 +131,7 @@ function renderTrigger(anchorRect: AnchorRect): string {
   `;
 }
 
-function renderCard(state: ContentCardState): string {
+function renderCard(state: ContentCardState, bodyMarkup: string): string {
   if (!state.selectionAnchorRect) {
     return "";
   }
@@ -137,11 +145,8 @@ function renderCard(state: ContentCardState): string {
       <header class="snapinsight-card-header">
         <button id="snapinsight-close" type="button" aria-label="关闭卡片">×</button>
       </header>
-      <div class="snapinsight-card-selection">${selectionText}</div>
-      <div class="snapinsight-card-body">
-        __SNAPINSIGHT_SHORT_SECTION__
-        __SNAPINSIGHT_DETAIL_SECTION__
-      </div>
+      <div id="snapinsight-card-selection" class="snapinsight-card-selection">${selectionText}</div>
+      <div id="snapinsight-card-body" class="snapinsight-card-body">${bodyMarkup}</div>
     </section>
   `;
 }
@@ -160,6 +165,37 @@ function renderSectionLabel(
   tone: "short" | "detail"
 ): string {
   return `<div class="snapinsight-section-label snapinsight-section-label--${tone}">${text}</div>`;
+}
+
+function renderSectionActionButton(id: string, label: string): string {
+  return `
+    <button
+      id="${id}"
+      type="button"
+      class="snapinsight-icon-button"
+      aria-label="${label}"
+    >
+      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <path
+          d="M16.2 6.2A6.5 6.5 0 1 0 17 12h-1.8a4.8 4.8 0 1 1-1.2-4.6L11.8 10H18V3.8l-1.8 2.4Z"
+          fill="currentColor"
+        />
+      </svg>
+    </button>
+  `;
+}
+
+function renderSectionHeader(
+  text: string,
+  tone: "short" | "detail",
+  actionMarkup: string = ""
+): string {
+  return `
+    <div class="snapinsight-section-header">
+      ${renderSectionLabel(text, tone)}
+      ${actionMarkup}
+    </div>
+  `;
 }
 
 function describeError(error: ExtensionError): string {
@@ -311,7 +347,14 @@ function renderShortSection(
   if (request.phase === "streaming" || request.phase === "completed") {
     return `
       <div class="snapinsight-short-section">
-        ${renderSectionLabel("简短解释", "short")}
+        ${renderSectionHeader(
+          "简短解释",
+          "short",
+          renderSectionActionButton(
+            "snapinsight-regenerate-short",
+            "重新生成简短解释"
+          )
+        )}
         ${renderResponseContent(request.textBuffer, "正在生成解释...")}
         ${
           request.phase === "streaming"
@@ -377,7 +420,7 @@ function renderDetailSection(
   if (viewState.detailDispatchPending || request.phase === "starting") {
     return `
       <div class="snapinsight-detail-section">
-        ${renderSectionLabel("详细解释", "detail")}
+        ${renderSectionHeader("详细解释", "detail")}
         ${renderLoadingState("正在生成更完整的解释...")}
       </div>
     `;
@@ -386,7 +429,14 @@ function renderDetailSection(
   if (request.phase === "streaming" || request.phase === "completed") {
     return `
       <div class="snapinsight-detail-section">
-        ${renderSectionLabel("详细解释", "detail")}
+        ${renderSectionHeader(
+          "详细解释",
+          "detail",
+          renderSectionActionButton(
+            "snapinsight-regenerate-detail",
+            "重新生成详细解释"
+          )
+        )}
         ${renderResponseContent(request.textBuffer, "正在生成更完整的解释...")}
         ${
           request.phase === "streaming"
@@ -401,7 +451,7 @@ function renderDetailSection(
     if (request.errorState.code === "selected_model_unavailable") {
       return `
         <div class="snapinsight-detail-section">
-          ${renderSectionLabel("详细解释", "detail")}
+          ${renderSectionHeader("详细解释", "detail")}
           ${renderModelPicker(viewState.modelPicker)}
         </div>
       `;
@@ -409,7 +459,7 @@ function renderDetailSection(
 
     return `
       <div class="snapinsight-detail-section">
-        ${renderSectionLabel("详细解释", "detail")}
+        ${renderSectionHeader("详细解释", "detail")}
         <div class="snapinsight-blocked-state">
           ${
             request.textBuffer
@@ -427,10 +477,92 @@ function renderDetailSection(
 
   return `
     <div class="snapinsight-detail-section">
-      ${renderSectionLabel("详细解释", "detail")}
+      ${renderSectionHeader("详细解释", "detail")}
       ${renderLoadingState("点击查看更多后会在这里展开详细解释。")}
     </div>
   `;
+}
+
+function renderCardBody(
+  state: ContentCardState,
+  viewState: RequestRenderViewState
+): string {
+  return `${renderShortSection(state, viewState)}${renderDetailSection(state, viewState)}`;
+}
+
+function updateCardBodyContent(
+  bodyElement: HTMLElement,
+  nextMarkup: string
+): void {
+  const previousScrollTop = bodyElement.scrollTop;
+  const previousScrollHeight = bodyElement.scrollHeight;
+  const previousClientHeight = bodyElement.clientHeight;
+  const wasNearBottom =
+    previousScrollHeight - (previousScrollTop + previousClientHeight) <= 24;
+
+  bodyElement.innerHTML = nextMarkup;
+
+  if (wasNearBottom) {
+    bodyElement.scrollTop = bodyElement.scrollHeight;
+    return;
+  }
+
+  bodyElement.scrollTop = previousScrollTop;
+}
+
+function bindStaticButtons(root: ShadowRoot, callbacks: RenderCallbacks): void {
+  const trigger = root.getElementById("snapinsight-trigger");
+  if (trigger instanceof HTMLButtonElement) {
+    trigger.addEventListener("mouseenter", callbacks.onTriggerHover);
+  }
+
+  const closeButton = root.getElementById("snapinsight-close");
+  if (closeButton instanceof HTMLButtonElement) {
+    bindPressAction(closeButton, callbacks.onCloseCard);
+  }
+}
+
+function bindDynamicButtons(root: ShadowRoot, callbacks: RenderCallbacks): void {
+  const retryButton = root.getElementById("snapinsight-retry-short");
+  if (retryButton instanceof HTMLButtonElement) {
+    bindPressAction(retryButton, callbacks.onRetryShort);
+  }
+
+  const regenerateShortButton = root.getElementById("snapinsight-regenerate-short");
+  if (regenerateShortButton instanceof HTMLButtonElement) {
+    bindPressAction(regenerateShortButton, callbacks.onRetryShort);
+  }
+
+  const expandDetailButton = root.getElementById("snapinsight-expand-detail");
+  if (expandDetailButton instanceof HTMLButtonElement) {
+    bindPressAction(expandDetailButton, callbacks.onExpandDetail);
+  }
+
+  const retryDetailButton = root.getElementById("snapinsight-retry-detail");
+  if (retryDetailButton instanceof HTMLButtonElement) {
+    bindPressAction(retryDetailButton, callbacks.onRetryDetail);
+  }
+
+  const regenerateDetailButton = root.getElementById("snapinsight-regenerate-detail");
+  if (regenerateDetailButton instanceof HTMLButtonElement) {
+    bindPressAction(regenerateDetailButton, callbacks.onRetryDetail);
+  }
+
+  if (typeof root.querySelectorAll === "function") {
+    root.querySelectorAll<HTMLElement>("[data-model-option]").forEach((option) => {
+      const modelId = option.dataset.modelOption;
+      if (modelId) {
+        bindPressAction(option, () => {
+          callbacks.onModelSelectionChange(modelId);
+        });
+      }
+    });
+  }
+
+  const saveModelButton = root.getElementById("snapinsight-save-model");
+  if (saveModelButton instanceof HTMLButtonElement) {
+    bindPressAction(saveModelButton, callbacks.onSaveModelSelection);
+  }
 }
 
 export function renderContentApp(
@@ -444,6 +576,40 @@ export function renderContentApp(
     state.cardPhase === "triggerVisible" ? triggerViewState.anchorRect : null;
   const cardAnchor =
     state.cardPhase === "open" ? state.selectionAnchorRect : null;
+  const cardBodyMarkup = cardAnchor ? renderCardBody(state, requestViewState) : "";
+
+  const existingTrigger = root.getElementById("snapinsight-trigger");
+  const existingCard = root.getElementById("snapinsight-card");
+  const existingCardSelection = root.getElementById("snapinsight-card-selection");
+  const existingCardBody = root.getElementById("snapinsight-card-body");
+
+  const canPatchInPlace =
+    (triggerAnchor ? existingTrigger instanceof HTMLButtonElement : !existingTrigger) &&
+    (cardAnchor
+      ? isHTMLElement(existingCard) &&
+        isHTMLElement(existingCardSelection) &&
+        isHTMLElement(existingCardBody)
+      : !existingCard);
+
+  if (canPatchInPlace) {
+    if (triggerAnchor && existingTrigger instanceof HTMLButtonElement) {
+      existingTrigger.setAttribute("style", computeTriggerStyle(triggerAnchor));
+    }
+
+    if (
+      cardAnchor &&
+      isHTMLElement(existingCard) &&
+      isHTMLElement(existingCardSelection) &&
+      isHTMLElement(existingCardBody)
+    ) {
+      existingCard.setAttribute("style", computeCardStyle(cardAnchor));
+      existingCardSelection.innerHTML = escapeHtml(state.selectedText ?? "");
+      updateCardBodyContent(existingCardBody, cardBodyMarkup);
+      bindDynamicButtons(root, callbacks);
+    }
+
+    return;
+  }
 
   root.innerHTML = `
     <style>
@@ -575,6 +741,13 @@ export function renderContentApp(
       .snapinsight-section-label--detail {
         background: rgba(124, 58, 237, 0.12);
         color: #6d28d9;
+      }
+
+      .snapinsight-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
       }
 
       .snapinsight-response-text {
@@ -755,6 +928,31 @@ export function renderContentApp(
         justify-self: start;
       }
 
+      .snapinsight-icon-button {
+        align-items: center;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+        display: inline-flex;
+        flex: 0 0 auto;
+        height: 28px;
+        justify-content: center;
+        padding: 0;
+        width: 28px;
+      }
+
+      .snapinsight-icon-button:hover {
+        background: rgba(148, 163, 184, 0.14);
+        color: #334155;
+      }
+
+      .snapinsight-icon-button svg {
+        width: 15px;
+        height: 15px;
+      }
+
       .snapinsight-detail-action {
         margin-top: 4px;
       }
@@ -779,58 +977,10 @@ export function renderContentApp(
     </style>
     <div id="app-shell">
       ${triggerAnchor ? renderTrigger(triggerAnchor) : ""}
-      ${
-        cardAnchor
-          ? renderCard(state).replace(
-              "__SNAPINSIGHT_SHORT_SECTION__",
-              renderShortSection(state, requestViewState)
-            ).replace(
-              "__SNAPINSIGHT_DETAIL_SECTION__",
-              renderDetailSection(state, requestViewState)
-            )
-          : ""
-      }
+      ${cardAnchor ? renderCard(state, cardBodyMarkup) : ""}
     </div>
   `;
 
-  const trigger = root.getElementById("snapinsight-trigger");
-  if (trigger instanceof HTMLButtonElement) {
-    trigger.addEventListener("mouseenter", callbacks.onTriggerHover);
-  }
-
-  const closeButton = root.getElementById("snapinsight-close");
-  if (closeButton instanceof HTMLButtonElement) {
-    bindPressAction(closeButton, callbacks.onCloseCard);
-  }
-
-  const retryButton = root.getElementById("snapinsight-retry-short");
-  if (retryButton instanceof HTMLButtonElement) {
-    bindPressAction(retryButton, callbacks.onRetryShort);
-  }
-
-  const expandDetailButton = root.getElementById("snapinsight-expand-detail");
-  if (expandDetailButton instanceof HTMLButtonElement) {
-    bindPressAction(expandDetailButton, callbacks.onExpandDetail);
-  }
-
-  const retryDetailButton = root.getElementById("snapinsight-retry-detail");
-  if (retryDetailButton instanceof HTMLButtonElement) {
-    bindPressAction(retryDetailButton, callbacks.onRetryDetail);
-  }
-
-  if (typeof root.querySelectorAll === "function") {
-    root.querySelectorAll<HTMLElement>("[data-model-option]").forEach((option) => {
-      const modelId = option.dataset.modelOption;
-      if (modelId) {
-        bindPressAction(option, () => {
-          callbacks.onModelSelectionChange(modelId);
-        });
-      }
-    });
-  }
-
-  const saveModelButton = root.getElementById("snapinsight-save-model");
-  if (saveModelButton instanceof HTMLButtonElement) {
-    bindPressAction(saveModelButton, callbacks.onSaveModelSelection);
-  }
+  bindStaticButtons(root, callbacks);
+  bindDynamicButtons(root, callbacks);
 }

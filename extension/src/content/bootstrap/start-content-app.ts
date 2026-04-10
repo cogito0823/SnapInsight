@@ -29,6 +29,7 @@ import {
   applyCompleteToRequestState,
   applyErrorToRequestState,
   applyForwardedStartEvent,
+  createIdleRequestState,
   createErroredRequestState,
   createStartingRequestState
 } from "../state/request-state";
@@ -168,13 +169,13 @@ export function startContentApp(): void {
           render();
         },
         onRetryShort: () => {
-          void startShortExplanation(state.activeModel ?? undefined);
+          regenerateShortExplanation();
         },
         onExpandDetail: () => {
           void startDetailExplanation();
         },
         onRetryDetail: () => {
-          void startDetailExplanation(state.activeModel ?? undefined, true);
+          regenerateDetailExplanation();
         },
         onModelSelectionChange: (modelId) => {
           replaceViewState({
@@ -442,6 +443,24 @@ export function startContentApp(): void {
     });
   };
 
+  const regenerateShortExplanation = (): void => {
+    if (state.cardPhase !== "open") {
+      return;
+    }
+
+    cancelActiveRequests(state);
+    rotateInteractionVersion();
+    resetViewState();
+    state = {
+      ...state,
+      detailExpanded: false,
+      shortRequestState: createIdleRequestState("short"),
+      detailRequestState: createIdleRequestState("detailed")
+    };
+    render();
+    void startShortExplanation(state.activeModel ?? undefined);
+  };
+
   const startDetailExplanation = async (
     modelOverride?: string,
     replaceExisting: boolean = false
@@ -526,6 +545,23 @@ export function startContentApp(): void {
         response.data.requestId
       )
     });
+  };
+
+  const regenerateDetailExplanation = (): void => {
+    if (state.cardPhase !== "open" || state.activeModel === null) {
+      return;
+    }
+
+    cancelActiveDetailRequest(state);
+    rotateInteractionVersion();
+    resetViewState();
+    state = {
+      ...state,
+      detailExpanded: true,
+      detailRequestState: createIdleRequestState("detailed")
+    };
+    render();
+    void startDetailExplanation(state.activeModel ?? undefined, true);
   };
 
   const saveSelectedModelAndRetry = async (): Promise<void> => {

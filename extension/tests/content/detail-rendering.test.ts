@@ -421,6 +421,8 @@ test("card polish removes plugin title and uses distinct section label variants"
     assert.doesNotMatch(root.innerHTML, />SnapInsight</);
     assert.match(root.innerHTML, /snapinsight-section-label--short/);
     assert.match(root.innerHTML, /snapinsight-section-label--detail/);
+    assert.match(root.innerHTML, /id="snapinsight-regenerate-short"/);
+    assert.match(root.innerHTML, /id="snapinsight-regenerate-detail"/);
   } finally {
     restoreWindow();
   }
