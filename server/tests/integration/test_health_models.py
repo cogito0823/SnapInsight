@@ -25,6 +25,8 @@ class FakeOllamaClient:
 
 
 class HealthAndModelsRouteTests(unittest.TestCase):
+    trusted_origin = "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
     def make_client(self, fake_client: FakeOllamaClient) -> TestClient:
         settings = Settings(
             trusted_extension_id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -34,6 +36,11 @@ class HealthAndModelsRouteTests(unittest.TestCase):
         app.state.model_catalog_service._ollama_client = fake_client
         return TestClient(app)
 
+    def allowed_origin_headers(self) -> dict[str, str]:
+        return {
+            "Origin": self.trusted_origin,
+        }
+
     def test_health_returns_service_identity(self) -> None:
         client = self.make_client(
             FakeOllamaClient(
@@ -42,7 +49,7 @@ class HealthAndModelsRouteTests(unittest.TestCase):
             )
         )
 
-        response = client.get("/health")
+        response = client.get("/health", headers=self.allowed_origin_headers())
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -58,10 +65,38 @@ class HealthAndModelsRouteTests(unittest.TestCase):
     def test_health_reports_ollama_unreachable_without_failing_route(self) -> None:
         client = self.make_client(FakeOllamaClient(reachable=False))
 
-        response = client.get("/health")
+        response = client.get("/health", headers=self.allowed_origin_headers())
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["ollamaReachable"], False)
+
+    def test_health_rejects_missing_origin(self) -> None:
+        client = self.make_client(FakeOllamaClient(reachable=True))
+
+        response = client.get("/health")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.json(),
+            {
+                "error": {
+                    "code": "request_failed",
+                    "message": "The request origin is not allowed.",
+                    "retryable": False,
+                }
+            },
+        )
+
+    def test_health_rejects_untrusted_origin(self) -> None:
+        client = self.make_client(FakeOllamaClient(reachable=True))
+
+        response = client.get(
+            "/health",
+            headers={"Origin": "chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["error"]["code"], "request_failed")
 
     def test_models_returns_ready_state(self) -> None:
         client = self.make_client(
@@ -70,7 +105,7 @@ class HealthAndModelsRouteTests(unittest.TestCase):
             )
         )
 
-        response = client.get("/v1/models")
+        response = client.get("/v1/models", headers=self.allowed_origin_headers())
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -97,7 +132,7 @@ class HealthAndModelsRouteTests(unittest.TestCase):
     def test_models_returns_no_models_available_state(self) -> None:
         client = self.make_client(FakeOllamaClient(models=[]))
 
-        response = client.get("/v1/models")
+        response = client.get("/v1/models", headers=self.allowed_origin_headers())
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -113,7 +148,7 @@ class HealthAndModelsRouteTests(unittest.TestCase):
             FakeOllamaClient(model_error=UpstreamUnavailableError("down"))
         )
 
-        response = client.get("/v1/models")
+        response = client.get("/v1/models", headers=self.allowed_origin_headers())
 
         self.assertEqual(response.status_code, 503)
         self.assertEqual(
@@ -132,9 +167,37 @@ class HealthAndModelsRouteTests(unittest.TestCase):
             FakeOllamaClient(model_error=UnexpectedServiceError("bad payload"))
         )
 
-        response = client.get("/v1/models")
+        response = client.get("/v1/models", headers=self.allowed_origin_headers())
 
         self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()["error"]["code"], "request_failed")
+
+    def test_models_reject_missing_origin(self) -> None:
+        client = self.make_client(FakeOllamaClient(models=[]))
+
+        response = client.get("/v1/models")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.json(),
+            {
+                "error": {
+                    "code": "request_failed",
+                    "message": "The request origin is not allowed.",
+                    "retryable": False,
+                }
+            },
+        )
+
+    def test_models_reject_untrusted_origin(self) -> None:
+        client = self.make_client(FakeOllamaClient(models=[]))
+
+        response = client.get(
+            "/v1/models",
+            headers={"Origin": "chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        )
+
+        self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["error"]["code"], "request_failed")
 
 

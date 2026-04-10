@@ -7,17 +7,6 @@ import { installMockChrome } from "../helpers/mock-chrome";
 
 test("stale cache diagnostics are rendered only as non-authoritative fallback", async () => {
   const chromeEnv = installMockChrome({
-    initialStorage: {
-      "settings.lastKnownModels": [
-        {
-          id: "cached:model",
-          label: "cached:model",
-          provider: "ollama",
-          available: true
-        }
-      ],
-      "settings.lastModelRefreshAt": "2026-04-10T10:00:00.000Z"
-    },
     sendMessage: async (message) => {
       if (
         typeof message === "object" &&
@@ -28,7 +17,16 @@ test("stale cache diagnostics are rendered only as non-authoritative fallback", 
         return {
           ok: true,
           data: {
-            selectedModel: "cached:model"
+            selectedModel: "cached:model",
+            lastKnownModels: [
+              {
+                id: "cached:model",
+                label: "cached:model",
+                provider: "ollama",
+                available: true
+              }
+            ],
+            lastModelRefreshAt: "2026-04-10T10:00:00.000Z"
           }
         };
       }

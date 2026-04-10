@@ -516,7 +516,16 @@ Response:
 {
   "ok": true,
   "data": {
-    "selectedModel": "llama3.1:8b"
+    "selectedModel": "llama3.1:8b",
+    "lastKnownModels": [
+      {
+        "id": "llama3.1:8b",
+        "label": "llama3.1:8b",
+        "provider": "ollama",
+        "available": true
+      }
+    ],
+    "lastModelRefreshAt": "2026-04-10T10:00:00.000Z"
   }
 }
 ```
@@ -527,7 +536,9 @@ If no model is selected yet:
 {
   "ok": true,
   "data": {
-    "selectedModel": null
+    "selectedModel": null,
+    "lastKnownModels": [],
+    "lastModelRefreshAt": null
   }
 }
 ```
@@ -535,6 +546,8 @@ If no model is selected yet:
 Rules:
 
 - `settings.getSelectedModel` is a read-only convenience contract for settings rendering and blocked-setup hints
+- the response may also include `lastKnownModels` and `lastModelRefreshAt` as worker-backed diagnostic convenience fields for settings rendering when live model loading later fails
+- these diagnostic fields must reflect the same persisted settings snapshot owned by the worker and must not become an authoritative substitute for live model validation
 - the in-page hover-triggered explanation flow does not need `settings.getSelectedModel` to succeed before it is allowed to call `explanations.start`
 - authoritative startup validation for an explanation attempt may be completed inside `explanations.start`
 

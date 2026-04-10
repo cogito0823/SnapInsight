@@ -4,12 +4,14 @@ import { settingsService } from "../settings/settings-service";
 
 export async function handleSettingsGetSelectedModel(): Promise<ReadSelectedModelResponse> {
   try {
-    const selectedModel = await settingsService.getSelectedModel();
+    const snapshot = await settingsService.getSettingsSnapshot();
 
     return {
       ok: true,
       data: {
-        selectedModel
+        selectedModel: snapshot.selectedModel,
+        lastKnownModels: snapshot.lastKnownModels,
+        lastModelRefreshAt: snapshot.lastModelRefreshAt
       }
     };
   } catch {

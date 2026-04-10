@@ -1,54 +1,25 @@
 import type { ExtensionError } from "../../shared/errors/error-codes";
-import type { ModelSummary } from "../../shared/models/model-summary";
 import type { OptionsState } from "../state/options-state";
 import {
   requestModelCatalog,
   requestSelectedModel
 } from "./worker-client";
 
-interface StaleDiagnosticsSnapshot {
-  lastKnownModels: ModelSummary[];
-  lastModelRefreshAt: string | null;
-}
-
-function readStorageDiagnostics(): Promise<StaleDiagnosticsSnapshot> {
-  return new Promise((resolve, reject) => {
-    // This read is diagnostics-only. Authoritative validation still happens in the worker.
-    chrome.storage.local.get(
-      ["settings.lastKnownModels", "settings.lastModelRefreshAt"],
-      (items) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-          return;
-        }
-
-        resolve({
-          lastKnownModels: Array.isArray(items["settings.lastKnownModels"])
-            ? (items["settings.lastKnownModels"] as ModelSummary[])
-            : [],
-          lastModelRefreshAt:
-            typeof items["settings.lastModelRefreshAt"] === "string"
-              ? items["settings.lastModelRefreshAt"]
-              : null
-        });
-      }
-    );
-  });
-}
-
 export async function loadSettingsSurface(): Promise<Partial<OptionsState>> {
-  const [selectedModelResponse, modelsResponse, diagnostics] =
+  const [selectedModelResponse, modelsResponse] =
     await Promise.all([
       requestSelectedModel(),
-      requestModelCatalog(),
-      readStorageDiagnostics().catch(() => ({
-        lastKnownModels: [],
-        lastModelRefreshAt: null
-      }))
+      requestModelCatalog()
     ]);
 
   const selectedModel =
     selectedModelResponse.ok ? selectedModelResponse.data.selectedModel : null;
+  const lastKnownModels =
+    selectedModelResponse.ok ? selectedModelResponse.data.lastKnownModels : [];
+  const lastModelRefreshAt =
+    selectedModelResponse.ok
+      ? selectedModelResponse.data.lastModelRefreshAt
+      : null;
 
   if (!modelsResponse.ok) {
     return {
@@ -61,8 +32,8 @@ export async function loadSettingsSurface(): Promise<Partial<OptionsState>> {
       saveError: null,
       saveSuccessMessage: null,
       isSaving: false,
-      lastKnownModels: diagnostics.lastKnownModels,
-      lastModelRefreshAt: diagnostics.lastModelRefreshAt
+      lastKnownModels,
+      lastModelRefreshAt
     };
   }
 
@@ -76,8 +47,8 @@ export async function loadSettingsSurface(): Promise<Partial<OptionsState>> {
     saveError: null,
     saveSuccessMessage: null,
     isSaving: false,
-    lastKnownModels: diagnostics.lastKnownModels,
-    lastModelRefreshAt: diagnostics.lastModelRefreshAt
+    lastKnownModels,
+    lastModelRefreshAt
   };
 }
 

@@ -58,6 +58,25 @@ test("native highlight loss alone does not reset an already open card", () => {
   assert.equal(afterLoss.pendingSelection, null);
 });
 
+test("the same still-valid live selection does not replace an already open card", () => {
+  const initialState = createInitialContentCardState("doc-first");
+  const triggerResult = applyLiveSelectionUpdate(initialState, null, liveSelection);
+  const openResult = acceptLiveSelectionForOpen(
+    triggerResult.state,
+    triggerResult.pendingSelection
+  );
+  const afterRepeatedSelection = applyLiveSelectionUpdate(
+    openResult.state,
+    null,
+    liveSelection
+  );
+
+  assert.equal(afterRepeatedSelection.state.cardPhase, "open");
+  assert.equal(afterRepeatedSelection.state.selectedText, "Transformer");
+  assert.deepEqual(afterRepeatedSelection.state.selectionAnchorRect, anchorRect);
+  assert.equal(afterRepeatedSelection.pendingSelection, null);
+});
+
 test("new valid selection replaces the old card interaction with a new trigger", () => {
   const initialState = createInitialContentCardState("doc-first");
   const triggerResult = applyLiveSelectionUpdate(initialState, null, liveSelection);

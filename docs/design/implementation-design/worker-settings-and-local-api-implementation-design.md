@@ -277,13 +277,14 @@ Implementation notes:
 
 Flow:
 
-1. handler reads persisted `settings.selectedModel`
-2. result is returned as `{ selectedModel: string | null }`
+1. handler reads the persisted settings snapshot from worker-owned storage
+2. result is returned as the read-only selected-model convenience data together with worker-backed stale-cache diagnostics for settings rendering
 
 Rules:
 
 - this is a read-only convenience contract
 - it supports settings rendering and blocked-setup hints
+- it may include `lastKnownModels` and `lastModelRefreshAt` as diagnostic snapshot fields for settings rendering, but those fields remain non-authoritative and must not bypass live validation
 - it must not become an authoritative prerequisite for `explanations.start`
 
 ### 7.4 `settings.setSelectedModel`

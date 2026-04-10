@@ -93,7 +93,18 @@ test("valid selected model persists and is readable afterward", async () => {
     assert.deepEqual(readResponse, {
       ok: true,
       data: {
-        selectedModel: "llama3.1:8b"
+        selectedModel: "llama3.1:8b",
+        lastKnownModels: [
+          {
+            id: "llama3.1:8b",
+            label: "llama3.1:8b",
+            provider: "ollama",
+            available: true
+          }
+        ],
+        lastModelRefreshAt: chromeEnv.storageState[
+          "settings.lastModelRefreshAt"
+        ]
       }
     });
   } finally {

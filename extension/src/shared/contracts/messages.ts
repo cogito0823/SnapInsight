@@ -1,6 +1,6 @@
 import type { ExplanationEventMessage } from "./events";
 import type { ExtensionError } from "../errors/error-codes";
-import type { ModelCatalogResult } from "../models/model-summary";
+import type { ModelCatalogResult, ModelSummary } from "../models/model-summary";
 import type { SelectionMode, SenderContext } from "../state/request-types";
 
 export type WorkerResult<T> =
@@ -22,6 +22,8 @@ export interface HealthCheckData {
 
 export interface ReadSelectedModelData {
   selectedModel: string | null;
+  lastKnownModels: ModelSummary[];
+  lastModelRefreshAt: string | null;
 }
 
 export interface ExplanationStartData {

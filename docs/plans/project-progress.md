@@ -25,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: `Batch 5` completed
-- Current execution point: `Batch 5: In-Page Shell and Selection Snapshot` is complete; `Batch 6` is next
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, the options-page settings surface, and the content-script in-page trigger plus card-shell snapshot baseline are now in place
+- Current overall status: `Batches 0-5 complete and alignment follow-up resolved`
+- Current execution point: the implementation baseline through `Batch 5` is in place, the formal post-`Batch 5` alignment follow-up issues have been resolved, and `Batch 6` is now the next execution target
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, the options-page settings surface, and the content-script in-page trigger plus card-shell snapshot baseline are now in place, with the post-`Batch 5` follow-up now closing the content accepted-snapshot regression, the server-origin-enforcement gap, and the options settings-surface boundary drift
 
 ## 3. Completed
 
@@ -65,6 +65,7 @@ This document should be updated as implementation progresses. It complements `do
 - Completed: follow-up implementation-design gap review added a dedicated options-page implementation design and backfilled privacy/logging and origin-validation configuration guidance where it had been missing
 - Completed: a final pre-approval review checklist was added so the project owner can perform one explicit approval pass before implementation begins
 - Completed: the project owner approved the implementation-level design package and it now serves as the execution baseline for `Batch 1` and later phases
+- Completed: a formal post-`Batch 5` code-versus-design alignment review was recorded and identified three follow-up issues that must be resolved before `Batch 6`
 
 ### 3.5 Batch 1 Implementation Baseline
 
@@ -115,7 +116,7 @@ This document should be updated as implementation progresses. It complements `do
 ### Immediate Next Actions
 
 - Begin `Batch 6: Short Explanation End-to-End`
-- Reuse the completed content-side snapshot shell and worker-backed settings path for the first streamed explanation flow
+- Reuse the now-aligned content snapshot baseline, worker-backed settings read path, and origin-enforced local API baseline for the first streamed explanation flow
 - Implement worker-to-content stream forwarding, short-request lifecycle updates, and blocked in-card setup states
 
 ### First Coding Targets
@@ -208,7 +209,13 @@ Review note:
 - Follow-up fixes now keep trigger-visible live selection separate from the accepted card snapshot stored in content state
 - The hover-open path now revalidates the current live selection before opening the card and captures the accepted snapshot only after that revalidation succeeds
 - Verified the batch with focused extension tests, extension type-check, production build, lint inspection, and source checks covering accepted-snapshot timing, replacement semantics, native-highlight loss behavior, and page-instance rotation
-- Alignment result: the current content-script shell baseline matches the approved PRD interaction rules, content-script implementation design, repository structure guidance, API sender-context expectations used in this batch, and extension-state snapshot semantics required for `Batch 5`
+- Formal post-batch alignment review finding 1 (high): `extension/src/content/state/selection-interaction.ts` currently replaces an already open interaction whenever a non-null live selection is observed, even when that live selection is the same still-valid selection that originally opened the card; because `start-content-app.ts` re-applies selection handling on later `selectionchange`, `mouseup`, and `keyup` events, this breaks the approved accepted-snapshot rule by dropping the card back to `triggerVisible`
+- Formal post-batch alignment review finding 2 (medium, cross-batch follow-up): `server/app/core/origin_validation.py` defines `ensure_allowed_origin()`, but the current API route path still relies on CORS configuration alone, so `GET /health` and `GET /v1/models` succeed without an allowed `Origin` header; this remains misaligned with the approved local-service allowed-origin enforcement requirement and should be fixed before stream work builds on the same path
+- Formal post-batch alignment review finding 3 (low, cross-batch follow-up): `extension/src/options/actions/load-settings.ts` still reads `settings.lastKnownModels` and `settings.lastModelRefreshAt` directly from `chrome.storage.local` for diagnostics instead of going through a worker-backed message contract; selected-model writes remain correctly validated through `settings.setSelectedModel`, but the settings-surface boundary is no longer fully worker-backed for those diagnostics fields
+- Follow-up fix applied: `extension/src/content/state/selection-interaction.ts` now preserves an already open interaction when the current live selection still matches the accepted card snapshot, so later `selectionchange`, `mouseup`, or `keyup` events no longer demote the same open card back to `triggerVisible`; focused content tests now include an explicit regression check for this case
+- Follow-up fix applied: `server/app/api/health.py` and `server/app/api/models.py` now enforce the trusted extension `Origin` explicitly through `ensure_allowed_origin()` instead of relying on CORS configuration alone; the current server tests now verify that missing or untrusted origins are rejected with `403 Forbidden` while the trusted extension origin still preserves the existing success-path behavior
+- Follow-up fix applied: the options settings surface now reads stale-cache diagnostics through the worker-backed `settings.getSelectedModel` response instead of directly from `chrome.storage.local`; shared contracts, worker handler behavior, options loading logic, and the related design and API documents were updated together so diagnostics remain worker-backed but still non-authoritative
+- Alignment result: the post-`Batch 5` follow-up items are now resolved, so the alignment gate for the completed baseline through `Batch 5` can be treated as cleanly passed and `Batch 6` may begin
 
 ### Batch 6: Short Explanation End-to-End
 
@@ -277,3 +284,6 @@ Avoid vague entries such as:
 - Recorded project-owner sign-off completion and updated the project state so the approved implementation-level design package is now the baseline for starting `Batch 1`.
 - Recorded the start of `Batch 1` implementation work and moved scaffold and shared-boundary setup into the active execution state.
 - Recorded `Batch 1` completion, including scaffold verification results, and explicitly held the project before `Batch 2` per the current instruction.
+- Recorded the formal post-`Batch 5` alignment review outcome, including one high-severity content-script snapshot regression, one server allowed-origin enforcement gap, and one lower-severity options-page diagnostics boundary drift; updated current status so `Batch 6` remains blocked until these follow-up items are resolved or explicitly documented.
+- Recorded the fix for the accepted-snapshot regression in `extension/src/content/state/selection-interaction.ts`, added a focused regression test for repeated same-selection events against an already open card, and removed that issue from the active blockers that still gate `Batch 6`.
+- Recorded the fix for the server allowed-origin enforcement gap by wiring explicit `Origin` validation into `GET /health` and `GET /v1/models`, adding focused integration coverage for missing and untrusted origins, and removing that issue from the active blockers that still gate `Batch 6`.

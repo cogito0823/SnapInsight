@@ -42,6 +42,14 @@ def create_request_failed_error(message: str) -> PublicError:
     )
 
 
+def create_forbidden_request_error(message: str = "The request origin is not allowed.") -> PublicError:
+    return PublicError(
+        code="request_failed",
+        message=message,
+        retryable=False,
+    )
+
+
 def create_invalid_request_error(message: str = "Request payload is invalid.") -> PublicError:
     return PublicError(
         code="invalid_request",

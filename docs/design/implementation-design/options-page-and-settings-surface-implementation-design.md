@@ -148,6 +148,7 @@ Recommended actions:
 The actions layer should:
 
 - call `settings.getSelectedModel` for persisted selection display
+- read stale-cache diagnostics through the same worker-backed settings read path rather than directly from `chrome.storage.local`
 - call `models.list` for authoritative live model availability
 - call `settings.setSelectedModel` for validated persistence
 - keep message-contract usage centralized rather than scattered across components
@@ -183,6 +184,7 @@ Recommended flow:
 Rules:
 
 - `settings.getSelectedModel` is a convenience read and does not validate current availability by itself
+- the same worker-backed read may also supply `lastKnownModels` and `lastModelRefreshAt` as diagnostic snapshot fields for the settings surface
 - `models.list` remains the authoritative source of current selectable models
 - `models.list` returning `ok: true` with `data.state = "no_models_available"` is a valid blocked settings state, not a transport failure
 
@@ -209,6 +211,7 @@ Rules:
 
 - `availableModels` used for an actual save attempt should come only from a successful live `models.list` response
 - `settings.lastKnownModels` and `settings.lastModelRefreshAt` may be shown when live loading fails
+- options-page code should obtain those diagnostics through the worker-backed read contract rather than directly from `chrome.storage.local`
 - stale-cache diagnostics are for messaging only and must not be treated as an authoritative writable catalog
 
 ## 8. Card-Isolation Rule

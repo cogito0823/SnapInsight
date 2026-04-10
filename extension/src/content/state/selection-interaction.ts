@@ -33,6 +33,16 @@ function sameAnchorRect(
   );
 }
 
+function matchesAcceptedSnapshot(
+  state: ContentCardState,
+  liveSelection: PendingSelectionSnapshot
+): boolean {
+  return (
+    state.selectedText === liveSelection.selectedText &&
+    sameAnchorRect(state.selectionAnchorRect, liveSelection.anchorRect)
+  );
+}
+
 export function applyLiveSelectionUpdate(
   state: ContentCardState,
   pendingSelection: PendingSelectionSnapshot | null,
@@ -65,6 +75,13 @@ export function applyLiveSelectionUpdate(
   }
 
   if (state.cardPhase === "open") {
+    if (matchesAcceptedSnapshot(state, liveSelection)) {
+      return {
+        state,
+        pendingSelection: null
+      };
+    }
+
     return {
       state: replaceSelectionSnapshot(state),
       pendingSelection: liveSelection
