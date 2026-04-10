@@ -390,6 +390,7 @@ Rules:
 - if more internal error categories are needed, they must still map into one of the v1 public codes above
 - `request_failed` is the public error code used when Ollama is unavailable but the SnapInsight local service itself is reachable
 - `local_service_conflict` is the public error code used when the fixed localhost port responds with a non-SnapInsight service identity
+- `request_cancelled` should only be emitted when cancellation is explicitly surfaced across the extension boundary; silent user-driven cancellation does not require a visible terminal message
 
 ## 8. Extension Internal Message Contracts
 
@@ -531,11 +532,68 @@ Request:
 }
 ```
 
+Validation rules:
+
+- `selectedModel` must match one of the currently available models returned by `models.list`
+- the service worker should not persist a model value that is already known to be unavailable
+
 Response:
 
 ```json
 {
   "ok": true
+}
+```
+
+If the selected model is no longer available:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "selected_model_unavailable",
+    "message": "The selected model is no longer available.",
+    "retryable": false
+  }
+}
+```
+
+If the local service cannot be reached while validating the selection:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "service_unavailable",
+    "message": "The local service could not be reached.",
+    "retryable": true
+  }
+}
+```
+
+If the fixed port responds with the wrong service:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "local_service_conflict",
+    "message": "The expected localhost port is occupied by a different service.",
+    "retryable": false
+  }
+}
+```
+
+If the model catalog cannot be loaded for another retryable reason:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "request_failed",
+    "message": "The selected model could not be validated.",
+    "retryable": true
+  }
 }
 ```
 
@@ -571,6 +629,11 @@ Response:
 }
 ```
 
+Rules:
+
+- a successful `explanations.start` response only confirms that the extension bridge and startup request were accepted
+- the actual stream lifecycle begins when the forwarded internal `start` event is emitted
+
 If setup fails before the stream starts:
 
 ```json
@@ -597,6 +660,15 @@ If setup fails because the fixed port responds with the wrong service:
 }
 ```
 
+Setup-time failure mapping:
+
+| Detected condition | Internal error code |
+|------|---------|
+| Local service transport failure | `service_unavailable` |
+| Wrong-service identity on fixed port | `local_service_conflict` |
+| Selected model unavailable or rejected at startup | `selected_model_unavailable` |
+| Other startup or dependency failure | `request_failed` |
+
 Streaming delivery rule:
 
 - after accepting `explanations.start`, the service worker must forward stream events back to the content script using an event channel keyed by `requestId` plus `senderContext`
@@ -609,6 +681,28 @@ Streaming delivery rule:
 ### 8.6 Stream Event Forwarding
 
 Worker-to-content-script stream events must use an explicit internal envelope.
+
+Start event:
+
+```json
+{
+  "type": "explanations.event",
+  "payload": {
+    "requestId": "9e86d5ac-35a7-4a59-8d57-8db1f71db9f6",
+    "senderContext": {
+      "tabId": 123,
+      "frameId": 0,
+      "pageInstanceId": "doc-7f6d6b2d"
+    },
+    "event": {
+      "event": "start",
+      "requestId": "9e86d5ac-35a7-4a59-8d57-8db1f71db9f6",
+      "mode": "short",
+      "model": "llama3.1:8b"
+    }
+  }
+}
+```
 
 Chunk event:
 
@@ -701,12 +795,39 @@ Bridge-loss event:
 }
 ```
 
+Explicit cancellation event:
+
+```json
+{
+  "type": "explanations.event",
+  "payload": {
+    "requestId": "9e86d5ac-35a7-4a59-8d57-8db1f71db9f6",
+    "senderContext": {
+      "tabId": 123,
+      "frameId": 0,
+      "pageInstanceId": "doc-7f6d6b2d"
+    },
+    "event": {
+      "event": "error",
+      "requestId": "9e86d5ac-35a7-4a59-8d57-8db1f71db9f6",
+      "error": {
+        "code": "request_cancelled",
+        "message": "The request was cancelled.",
+        "retryable": false
+      }
+    }
+  }
+}
+```
+
 Rules:
 
 - the internal envelope type must be `explanations.event`
 - `payload.senderContext` must match the scoped interaction that started the request
 - `payload.event` must preserve the Section 6 stream-event contract
 - bridge loss must be surfaced through the same internal event envelope, normalized as retryable `request_failed`
+- if explicit cancellation is surfaced, it must use the same internal envelope with terminal error code `request_cancelled`
+- the forwarded `start` event must not be omitted when the stream is actually established
 
 ### 8.7 Cancel Explanation Stream
 

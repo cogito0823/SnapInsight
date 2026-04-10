@@ -453,6 +453,103 @@ Reasoning:
 - The current review found higher-priority contract and routing issues.
 - Deferring geometry detail here avoids blocking the main architecture/spec closure while keeping the product commitment visible.
 
+### 4.18 How should selected-model updates be validated before persistence?
+
+Options:
+- Persist any user-provided model value and detect failure only during explanation requests
+- Validate the selected model against the current model catalog before persistence
+- Skip persistence validation in v1
+
+Preliminary recommendation:
+- Validate `settings.setSelectedModel` against the current available model catalog before persistence.
+- If the requested model is not currently selectable, reject the update with `selected_model_unavailable`.
+
+Reasoning:
+- The PRD already requires re-selection when the previous model is no longer available.
+- Failing fast during settings updates avoids storing invalid configuration and reduces later state confusion.
+
+### 4.19 How should `request_cancelled` be represented in the contract?
+
+Options:
+- Remove `request_cancelled` from the contract entirely and treat cancellation as purely silent
+- Keep `request_cancelled` as a defined terminal outcome, but make it non-user-visible in normal UI flows
+- Treat all cancellations as generic `request_failed`
+
+Preliminary recommendation:
+- Keep `request_cancelled` in the contract as a valid terminal runtime outcome.
+- Use it only when cancellation is explicitly surfaced across the extension boundary.
+- Normal user-driven cancellation may still complete silently, but if an explicit terminal outcome is emitted it must use `request_cancelled`, and the UI must not show it as a visible error.
+
+Reasoning:
+- This preserves a precise machine-readable outcome without forcing user-visible noise.
+- It also gives implementations a defined contract when cancellation does become observable.
+
+### 4.20 How should `explanations.start` setup failures map into extension-internal errors?
+
+Options:
+- Collapse all setup failures into `request_failed`
+- Define a deterministic mapping from setup-time failure categories to extension-internal error codes
+- Leave mapping to implementation
+
+Preliminary recommendation:
+- Define deterministic setup-time failure mapping for `explanations.start`.
+- At minimum:
+  - transport failure -> `service_unavailable`
+  - wrong-service identity -> `local_service_conflict`
+  - selected model unavailable -> `selected_model_unavailable`
+  - dependency or unexpected startup failure -> `request_failed`
+
+Reasoning:
+- The localhost API already distinguishes several setup-time failures.
+- Without an explicit mapping table, different implementations will collapse different cases and the UI state machine will drift.
+
+### 4.21 How should the page-local state model represent simultaneous short and detailed streams?
+
+Options:
+- Keep one global request state for the whole card
+- Maintain separate request state for short explanation and detailed explanation
+- Prevent detailed explanation from starting until short explanation fully completes
+
+Preliminary recommendation:
+- Maintain separate request state for short explanation and detailed explanation.
+- Each area should have its own request identity, loading state, buffered text, and error state.
+
+Reasoning:
+- The current interaction design allows detailed explanation to start while the card already contains short explanation content.
+- A single global request slot cannot reliably represent partial success, per-area retry, or concurrent stream lifecycle.
+
+### 4.22 How should `settings.setSelectedModel` fail when the model catalog itself cannot be trusted?
+
+Options:
+- Only return `selected_model_unavailable`
+- Reuse the same failure families as the rest of the extension contract
+- Hide these failures and leave the old selection untouched without an explicit result
+
+Preliminary recommendation:
+- Keep `selected_model_unavailable` for the case where the chosen model is known but not currently selectable.
+- If the service cannot be reached, use `service_unavailable`.
+- If the fixed port responds with the wrong service, use `local_service_conflict`.
+- If the model catalog cannot be loaded for other retryable reasons, use `request_failed`.
+
+Reasoning:
+- Settings writes depend on a trustworthy model catalog lookup.
+- Without explicit non-model failure results, settings UI and first-use UI will diverge in how they handle the same operational conditions.
+
+### 4.23 Should the worker-to-content-script bridge forward the stream `start` event explicitly?
+
+Options:
+- Treat successful `explanations.start` response as sufficient and do not forward `start`
+- Forward `start` through the same internal event envelope as every other stream event
+- Leave it implementation-defined
+
+Preliminary recommendation:
+- Forward the `start` event explicitly through the same `explanations.event` envelope used for other stream events.
+- Treat the `explanations.start` success response only as bridge/setup acknowledgement, not as a substitute for the stream `start` event itself.
+
+Reasoning:
+- This keeps the extension-internal contract aligned with the localhost stream contract.
+- It avoids two competing interpretations of when a stream has actually started.
+
 ## 5. Proposed RFC Breakdown
 
 Based on the questions above, the formal RFC set should be:
@@ -485,3 +582,9 @@ Current preliminary direction for v1:
 - Define an explicit worker-to-content-script stream event envelope rather than leaving forwarding format implicit.
 - Record local-process impersonation as an explicit residual v1 security risk.
 - Keep `input` / `textarea` support in v1, but defer detailed anchor-geometry design to a lower-priority follow-up.
+- Validate selected-model writes before persistence and reject invalid choices with `selected_model_unavailable`.
+- Keep `request_cancelled` as a defined but normally non-user-visible terminal outcome.
+- Define an explicit setup-failure mapping table for `explanations.start`.
+- Represent short and detailed explanation lifecycle with separate page-local request state.
+- Map `settings.setSelectedModel` operational failures into the same stable error families used elsewhere in the extension.
+- Forward the stream `start` event explicitly through the internal event envelope instead of implying it from setup success.

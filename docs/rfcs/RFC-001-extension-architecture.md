@@ -103,6 +103,8 @@ Adopt Option B.
 - 扩展内部流式请求与取消路由必须使用 `requestId` 加发送方上下文，而不是仅依赖 `requestId`。
 - 发送方上下文至少包括 `tabId`、`frameId` 和每个文档实例唯一的 `pageInstanceId`。
 - worker 到 content script 的流式回传必须使用明确的内部事件 envelope，而不是依赖未约定的“原样转发”。
+- 如果取消结果被显式跨扩展边界传播，必须使用统一的终止 outcome，而不是临时自定义消息。
+- worker 到 content script 的内部流事件 contract 应显式包含 `start` 事件，而不仅仅是 `chunk`、`complete` 与失败事件。
 - `options page` 负责：
   - 提供稳定的模型配置与基础设置入口
 - 页面内 UI 使用 `Shadow DOM` 容器挂载，减少样式冲突。
@@ -120,6 +122,8 @@ The v1 extension architecture for SnapInsight is:
 7. Treat MV3 worker/bridge loss during an active stream as an explicit retryable failure path.
 8. Include a per-document `pageInstanceId` in sender context so reloads and same-tab navigations cannot receive stale stream events.
 9. Define an explicit worker-to-content-script stream event contract for chunks, completion, terminal errors, and bridge-loss failures.
+10. Reuse a single explicit cancellation outcome when cancellation is surfaced across the extension boundary.
+11. Forward the stream `start` event explicitly through the same internal event envelope used for later stream events.
 
 This decision is accepted for v1 and should be treated as the baseline for technical design.
 
@@ -132,3 +136,5 @@ This decision is accepted for v1 and should be treated as the baseline for techn
 - Future implementation must account for MV3 worker lifetime instead of assuming a permanently resident background process.
 - Unexpected bridge loss should be normalized into a retryable extension-level failure rather than a silent hang or implicit cancellation.
 - The extension spec should define internal stream-delivery message shapes as strictly as the localhost API shapes.
+- The extension spec should also define how explicit cancellation outcomes are represented when they are emitted.
+- The design/state model should separate short-explanation and detailed-explanation stream state rather than relying on one global request slot.

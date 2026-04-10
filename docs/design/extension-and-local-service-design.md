@@ -88,6 +88,7 @@ Responsibilities:
 - Normalize network and service errors into stable extension-facing result types
 - Read and write persistent settings in `chrome.storage.local`
 - Coordinate model selection requirements for first use
+- Validate `selectedModel` updates against the current model catalog before persistence
 - Maintain the active stream bridge for each page instance while requests are running
 - Route stream chunks and cancellations using both `requestId` and sender context
 - Fail active UI requests cleanly if the MV3 bridge is lost or the worker can no longer continue the stream
@@ -109,6 +110,12 @@ Responsibilities:
 - Surface service-health and model-availability errors in a stable settings context
 
 The options page is the long-lived settings surface. The in-page card may present a lightweight first-use picker only when the user is blocked from making an explanation request.
+
+Model-selection update rule:
+
+- A selected model should only be persisted if it is currently present in the available model list.
+- If the requested model is no longer selectable, the update should fail with `selected_model_unavailable` and the user should be prompted to choose again.
+- If the model catalog cannot be trusted because the service is unreachable, the wrong service is bound to the fixed port, or the catalog cannot be loaded for retryable reasons, the update should fail with the same stable error families used elsewhere in the extension contract.
 
 ### 5.2 Local Python Service
 
@@ -181,9 +188,10 @@ sequenceDiagram
 
 1. User clicks `查看更多`.
 2. Content script keeps the existing card open and expands the detail area.
-3. Content script sends a `detailed` mode request through the service worker.
-4. The service worker opens a second explanation stream for the same selected text and chosen model.
-5. The content script renders detail-area loading and streamed detail chunks.
+3. Content script allocates a dedicated detail-request state separate from the short-explanation request state.
+4. Content script sends a `detailed` mode request through the service worker.
+5. The service worker opens a second explanation stream for the same selected text and chosen model.
+6. The content script renders detail-area loading and streamed detail chunks.
 6. If the detailed request fails, the short explanation remains visible and only the detail area shows the error and retry action.
 
 ### 6.3 Request Replacement and Cancellation
@@ -219,11 +227,14 @@ When the user closes the card:
 
 - The worker-to-content-script stream bridge should use one explicit internal event envelope rather than ad hoc forwarded payloads.
 - The internal event contract should cover at least:
+  - stream start acknowledgement event
   - streamed text chunk delivery
   - successful completion
   - terminal stream error
   - bridge-loss failure after stream acceptance
+- optional explicit cancellation outcome when cancellation is surfaced instead of remaining silent
 - Bridge-loss failures should be normalized to a retryable `request_failed` state in the content script rather than being treated as silent disconnects.
+- The success response from `explanations.start` should be treated as setup acknowledgement only; it should not replace the forwarded `start` event in the runtime contract.
 
 ## 7. UI State Model
 
@@ -233,14 +244,20 @@ The content script should maintain ephemeral state keyed to the currently active
 
 - `selectedText`
 - `selectionAnchorRect`
-- `cardPhase`: `hidden`, `triggerVisible`, `shortLoading`, `shortReady`, `detailLoading`, `detailReady`, `error`
+- `cardPhase`: `hidden`, `triggerVisible`, `open`
 - `detailExpanded`
-- `activeRequestId`
 - `activeModel`
-- `shortTextBuffer`
-- `detailTextBuffer`
-- `errorState`
 - `senderContext`
+- `shortRequestState`
+  - `requestId`
+  - `phase`: `idle`, `starting`, `streaming`, `completed`, `error`, `cancelled`
+  - `textBuffer`
+  - `errorState`
+- `detailRequestState`
+  - `requestId`
+  - `phase`: `idle`, `starting`, `streaming`, `completed`, `error`, `cancelled`
+  - `textBuffer`
+  - `errorState`
 
 This state must be reset when the selection becomes invalid, the user clicks away, or a new valid selection replaces the old one.
 
@@ -299,6 +316,17 @@ Health and model state interpretation:
 - If the fixed localhost port responds with the wrong service identity, the extension must treat it as a local service conflict and fail closed.
 - If the stream bridge disappears unexpectedly after a request has started, the affected interaction should become a retryable `request_failed` state rather than `request_cancelled`.
 - The same `local_service_conflict` interpretation must apply no matter which extension entry point discovers the wrong-service identity first.
+- `request_cancelled` should only be used when cancellation is explicitly emitted across the extension boundary; silent user-driven cancellation may still result in no visible terminal message.
+- `explanations.start` setup failures should be mapped deterministically:
+  - unreachable local service -> `service_unavailable`
+  - wrong-service identity -> `local_service_conflict`
+  - invalid or stale model selection -> `selected_model_unavailable`
+  - other startup failure -> `request_failed`
+- `settings.setSelectedModel` failures should be mapped deterministically:
+  - unreachable local service -> `service_unavailable`
+  - wrong-service identity -> `local_service_conflict`
+  - invalid or stale model selection -> `selected_model_unavailable`
+  - other catalog-load or validation failure -> `request_failed`
 
 ## 9. Proposed Implementation Structure
 

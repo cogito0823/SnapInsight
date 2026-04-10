@@ -96,6 +96,8 @@ Adopt Option B.
 - PRD 中的 `1-20` 选区规则继续作为产品约束由扩展侧执行；服务端可以保留更宽松的防御性文本上限，但这不代表产品支持更长输入。
 - `1-20` 的产品边界必须采用明确的混合计数规则，而不能留给各实现自行解释。
 - 混合脚本计数规则应采用段级定义并附带示例，覆盖英文连字符词、数字词和中英混合短串。
+- 模型选择写入必须在持久化前校验当前模型是否仍可用，而不是把失效模型先写入再在解释阶段兜底。
+- 设置写入除了模型失效外，也应对“服务不可达”“错误服务身份”“模型目录暂时不可加载”给出确定性的扩展侧失败结果。
 
 ## Decision
 
@@ -111,6 +113,8 @@ The v1 Python service and Ollama integration model for SnapInsight is:
 8. Keep the product selection limit in the extension layer and treat any larger service-side text ceiling as defensive validation only.
 9. Define the product selection limit with an explicit mixed-language counting rule so UI validation remains consistent across implementations.
 10. Document example-based edge cases for mixed-script counting rather than relying on generic prose alone.
+11. Reject invalid selected-model writes with `selected_model_unavailable` before persistence.
+12. Use deterministic extension-facing failure mapping for selected-model writes when the model catalog cannot be trusted or loaded.
 
 This decision is accepted for v1.
 
@@ -146,6 +150,8 @@ This decision is accepted for v1.
 - Once a `200` streaming response has begun, later failures should end with a structured terminal stream error event.
 - The exact counting rule for the product-side `1-20` limit should be fixed in the API/design documents rather than inferred from implementation language behavior.
 - The counting rule should explicitly cover cases such as hyphenated English tokens and mixed-script segments.
+- The extension-facing contract should define deterministic setup-failure mapping for explanation-stream startup.
+- The extension-facing contract should also define deterministic failure mapping for model-selection writes.
 
 The exact payload schema should be finalized in `docs/specs/api-spec.md`.
 
@@ -162,6 +168,8 @@ The exact payload schema should be finalized in `docs/specs/api-spec.md`.
 - If Ollama is unavailable during model-list retrieval, return an explicit retryable failure rather than pretending the model list is simply empty.
 - Mixed-language text length validation at the product layer should be deterministic and documented.
 - Unexpected MV3 bridge loss should be handled at the extension contract layer and does not require a separate product-facing model/backend error code.
+- If cancellation is explicitly surfaced after request start, it should use the dedicated `request_cancelled` outcome rather than being overloaded into `request_failed`.
+- Stream startup acknowledgement and stream-start event should remain distinct concepts in the extension contract.
 
 ## Ollama Integration Rules
 
@@ -176,3 +184,5 @@ The exact payload schema should be finalized in `docs/specs/api-spec.md`.
 - `docs/specs/api-spec.md` should define the exact request and streaming event schema.
 - Future changes such as background daemonization, persistent job queues, or alternative model backends should require a new RFC rather than silently expanding this contract.
 - The API spec should explicitly separate product input limits from defensive backend validation limits.
+- The API spec should define both settings-write validation failures and explanation-start setup-failure mapping.
+- The design document should model short and detailed explanation as separate stream lifecycles in the UI state.
