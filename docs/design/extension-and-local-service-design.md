@@ -9,6 +9,9 @@
   - `docs/rfcs/RFC-002-local-communication-and-security.md`
   - `docs/rfcs/RFC-003-python-service-and-ollama-integration.md`
   - `docs/design/repository-and-code-structure.md`
+  - `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
+  - `docs/design/implementation-design/content-script-interaction-implementation-design.md`
+  - `docs/design/implementation-design/server-streaming-and-orchestration-implementation-design.md`
   - `docs/specs/api-spec.md`
   - `docs/specs/extension-state-spec.md`
 

@@ -1,0 +1,41 @@
+---
+description: Document-driven implementation workflow for SnapInsight
+alwaysApply: true
+---
+
+# Implementation Workflow
+
+Use the project documents as the implementation operating system, not just as background reference.
+
+## Required workflow
+
+When implementing or resuming implementation work:
+
+1. Read `docs/plans/implementation-plan.md` to identify the current phase or batch.
+2. Read `docs/prd/PRD-snapinsight.md` for user-visible behavior, scope, and acceptance constraints.
+3. Read the higher-level design documents that define the overall architecture and runtime ownership:
+   - `docs/design/extension-and-local-service-design.md`
+   - `docs/design/repository-and-code-structure.md`
+4. Read `docs/plans/project-progress.md` to determine what is completed, in progress, next, and blocked.
+5. Read `docs/plans/implementation-checklist.md` to follow execution and verification steps.
+6. Read the implementation-level design document for the area being changed:
+   - worker, settings, local API -> `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
+   - content-script interaction -> `docs/design/implementation-design/content-script-interaction-implementation-design.md`
+   - local Python service streaming and orchestration -> `docs/design/implementation-design/server-streaming-and-orchestration-implementation-design.md`
+
+## Execution rules
+
+- Treat implementation-level design documents as the primary code-structure and execution guide for their area.
+- Treat `docs/prd/PRD-snapinsight.md` as the higher-level source of truth for user-visible behavior, scope, and acceptance expectations.
+- Treat `docs/design/extension-and-local-service-design.md` as the higher-level source of truth for cross-runtime responsibilities, interaction flows, and failure behavior.
+- Treat `docs/design/repository-and-code-structure.md` as the higher-level source of truth for file placement and module boundaries.
+- Do not treat chat as the source of truth when the documents already define the workflow, contracts, or structure.
+- Do not silently change contracts, state shape, error semantics, or runtime ownership; update documents first if behavior must change.
+- Prefer continuing the current batch before starting a later batch, unless the documents explicitly justify a different order.
+
+## Progress discipline
+
+- When work starts, reflect it in `docs/plans/project-progress.md`.
+- When a batch-level task is completed, update `docs/plans/implementation-checklist.md`.
+- When implementation reveals ambiguity, record it in the appropriate project document instead of leaving it only in chat.
+- Before considering a batch complete, ensure verification and alignment-review steps from `docs/plans/implementation-plan.md` and `docs/plans/implementation-checklist.md` have been satisfied.
