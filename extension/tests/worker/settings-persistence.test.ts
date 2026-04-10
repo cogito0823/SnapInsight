@@ -6,20 +6,31 @@ import { handleSettingsSetSelectedModel } from "../../src/worker/handlers/settin
 import { installMockChrome } from "../helpers/mock-chrome";
 
 function installFetchMock(
-  implementation: (input: string) => Promise<Response>
+  implementation: (input: string, init?: RequestInit) => Promise<Response>
 ): () => void {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = (async (input: string | URL | Request) =>
-    implementation(String(input))) as typeof fetch;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
+    implementation(String(input), init)) as typeof fetch;
 
   return () => {
     globalThis.fetch = originalFetch;
   };
 }
 
+function readHeader(init: RequestInit | undefined, name: string): string | null {
+  const headers = new Headers(init?.headers);
+  return headers.get(name);
+}
+
 test("valid selected model persists and is readable afterward", async () => {
   const chromeEnv = installMockChrome();
-  const restoreFetch = installFetchMock(async (input) => {
+  const trustHeaders: string[] = [];
+  const restoreFetch = installFetchMock(async (input, init) => {
+    const trustHeader = readHeader(init, "X-SnapInsight-Extension-Id");
+    if (trustHeader) {
+      trustHeaders.push(trustHeader);
+    }
+
     if (input.endsWith("/health")) {
       return new Response(
         JSON.stringify({
@@ -87,6 +98,10 @@ test("valid selected model persists and is readable afterward", async () => {
       typeof chromeEnv.storageState["settings.lastModelRefreshAt"],
       "string"
     );
+    assert.deepEqual(trustHeaders, [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ]);
 
     const readResponse = await handleSettingsGetSelectedModel();
 

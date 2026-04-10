@@ -6,6 +6,7 @@ import {
   LocalApiTimeoutError,
   LocalApiTransportError
 } from "./error-mapping";
+import { appendLocalApiTrustHeaders } from "./http-client";
 import { LOCAL_API_TIMEOUT_MS } from "./timeouts";
 
 const LOCAL_API_BASE_URL = "http://127.0.0.1:11435";
@@ -203,12 +204,15 @@ export async function openExplanationStream(
   }, LOCAL_API_TIMEOUT_MS);
 
   try {
+    const headers = new Headers({
+      Accept: "application/x-ndjson",
+      "Content-Type": "application/json"
+    });
+    appendLocalApiTrustHeaders(headers);
+
     const response = await fetch(`${LOCAL_API_BASE_URL}/v1/explanations/stream`, {
       method: "POST",
-      headers: {
-        Accept: "application/x-ndjson",
-        "Content-Type": "application/json"
-      },
+      headers,
       body: JSON.stringify(request),
       signal: controller.signal
     });

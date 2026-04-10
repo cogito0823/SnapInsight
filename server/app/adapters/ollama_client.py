@@ -55,11 +55,17 @@ class OllamaClient:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 async with client.stream(
                     "POST",
-                    f"{self._base_url}/api/generate",
+                    f"{self._base_url}/api/chat",
                     json={
                         "model": model,
-                        "prompt": prompt,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": prompt,
+                            }
+                        ],
                         "stream": True,
+                        "think": False,
                     },
                 ) as response:
                     response.raise_for_status()
@@ -80,7 +86,13 @@ class OllamaClient:
                                 "Ollama returned an invalid streaming event."
                             )
 
-                        chunk = payload.get("response")
+                        message = payload.get("message")
+                        if message is not None and not isinstance(message, dict):
+                            raise UnexpectedServiceError(
+                                "Ollama returned an invalid chat message chunk."
+                            )
+
+                        chunk = message.get("content") if isinstance(message, dict) else None
                         if chunk is not None and not isinstance(chunk, str):
                             raise UnexpectedServiceError(
                                 "Ollama returned an invalid response chunk."

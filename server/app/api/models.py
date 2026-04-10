@@ -4,13 +4,16 @@ from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 
 from app.core.errors import (
-    OriginNotAllowedError,
+    ExtensionIdentityNotAllowedError,
     UnexpectedServiceError,
     UpstreamUnavailableError,
     create_forbidden_request_error,
     create_request_failed_error,
 )
-from app.core.origin_validation import ensure_allowed_origin
+from app.core.origin_validation import (
+    EXTENSION_ID_HEADER,
+    ensure_allowed_extension_identity,
+)
 from app.schemas.error_schema import build_error_response
 
 router = APIRouter(prefix="/v1", tags=["models"])
@@ -21,12 +24,13 @@ async def get_models(request: Request):
     service = request.app.state.model_catalog_service
 
     try:
-        ensure_allowed_origin(
+        ensure_allowed_extension_identity(
             request.headers.get("origin"),
+            request.headers.get(EXTENSION_ID_HEADER),
             request.app.state.settings,
         )
         return await service.list_models()
-    except OriginNotAllowedError:
+    except ExtensionIdentityNotAllowedError:
         error = create_forbidden_request_error()
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,

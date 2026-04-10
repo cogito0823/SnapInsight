@@ -204,7 +204,7 @@ Recommended client split:
 The local API layer should own:
 
 - base URL construction
-- request headers
+- request headers, including the worker-controlled `X-SnapInsight-Extension-Id: <chrome.runtime.id>` fallback identity signal on every localhost request
 - allowed response content-type checks where useful
 - transport-error classification
 - wrong-service identity detection
@@ -244,10 +244,11 @@ Flow:
 
 1. handler calls the health client
 2. health client performs `GET /health`
-3. response is trusted only if `service == "snapinsight-local-api"`
-4. wrong-service identity maps to `local_service_conflict`
-5. transport failure maps to `service_unavailable`
-6. successful result is returned through the shared message contract
+3. health client sends the worker-controlled `X-SnapInsight-Extension-Id` header together with the standard request
+4. response is trusted only if `service == "snapinsight-local-api"`
+5. wrong-service identity maps to `local_service_conflict`
+6. transport failure maps to `service_unavailable`
+7. successful result is returned through the shared message contract
 
 Implementation notes:
 
@@ -259,7 +260,7 @@ Implementation notes:
 Flow:
 
 1. handler calls the model-list client
-2. client requests `GET /v1/models`
+2. client requests `GET /v1/models` and sends the same worker-controlled fallback identity header used by `health.check`
 3. successful model list updates `settings.lastKnownModels` and `settings.lastModelRefreshAt`
 4. no-models state is returned as a valid product condition, not a transport failure
 5. wrong-service identity and transport failures are normalized consistently with other entry points
@@ -397,7 +398,7 @@ Validation expectations:
 Pre-stream non-success normalization:
 
 - `409` selected-model failures must normalize to `selected_model_unavailable`
-- `403` origin rejection must normalize to a non-streaming `request_failed` result because the extension contract does not expose a narrower public origin-error code
+- `403` extension-identity rejection, whether caused by a missing or invalid `Origin` or a missing or invalid worker fallback header, must normalize to a non-streaming `request_failed` result because the extension contract does not expose a narrower public origin-error code
 - other pre-stream HTTP startup failures not mapped to a narrower public code should normalize to `request_failed`
 
 ## 9. Storage Design
@@ -515,3 +516,4 @@ The following topics should be covered in separate implementation-level document
 - Marked the document as ready for project-owner approval review after the formal review and follow-up re-review found no remaining substantive findings.
 - Added explicit worker-side privacy and logging guidance so implementation-level instructions now carry forward the approved non-persistence and no-sensitive-default-logging rules.
 - Marked the document `Approved` after project-owner sign-off confirmed it as the execution baseline for implementation.
+- Updated the worker local-API contract so every localhost request carries `X-SnapInsight-Extension-Id`, and clarified that `403` identity rejection still normalizes to extension-facing `request_failed` when both trust signals fail.

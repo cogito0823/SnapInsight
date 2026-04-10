@@ -121,6 +121,7 @@ Non-responsibilities:
 Responsibilities:
 
 - Act as the only extension layer allowed to call `127.0.0.1:11435`
+- Attach the worker-controlled `X-SnapInsight-Extension-Id` header on all local API requests so the server can fall back to extension-id validation when browser-provided `Origin` behavior is missing or incompatible
 - Provide an internal message API for:
   - health checks
   - model list fetch
@@ -172,7 +173,7 @@ Model-selection update rule:
 Responsibilities:
 
 - Expose the localhost HTTP API on `127.0.0.1:11435`
-- Validate allowed extension origins
+- Validate the allowed extension identity using the trusted extension `Origin` and the worker-controlled fallback header
 - Parse requests and stream structured response events
 - Map internal failures to stable product error codes
 - Use HTTP status codes for failures detected before stream establishment
@@ -483,3 +484,4 @@ This design document intentionally fixes module ownership and flow behavior firs
 - Removed settings-path ambiguity for the options page, aligned the high-level repository structure with `docs/design/repository-and-code-structure.md`, and clarified stale-cache and timeout ownership guidance.
 - Clarified card snapshot lifetime, authoritative explanation startup, detail-request gating and deduplication, blocked setup-state presentation, card-scoped effective model ownership, hover-intent guidance, and streamed chunk coalescing allowances.
 - Consolidated the canonical startup flow around the accepted authoritative-startup RFC decision and aligned detail eligibility with the accepted visible-content rule from the interaction-lifecycle RFC.
+- Updated the local trust boundary so the worker always sends `X-SnapInsight-Extension-Id`, while the server accepts either the trusted extension `Origin` or that worker-controlled fallback header when validating localhost requests.

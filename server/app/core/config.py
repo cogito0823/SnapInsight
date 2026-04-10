@@ -55,6 +55,14 @@ class Settings(BaseSettings):
         assert self.trusted_extension_id is not None
         return f"chrome-extension://{self.trusted_extension_id}"
 
+    @property
+    def resolved_trusted_extension_id(self) -> str:
+        if self.trusted_extension_id is not None:
+            return self.trusted_extension_id
+
+        parsed = urlparse(self.resolved_trusted_extension_origin)
+        return parsed.netloc
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

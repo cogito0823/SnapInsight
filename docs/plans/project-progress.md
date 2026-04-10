@@ -25,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: `Batches 0-7 complete`
-- Current execution point: `Batch 7` is now complete with verification and alignment review recorded, and `Batch 8` is the next execution target
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, the options-page settings surface, the content-script in-page trigger plus card-shell snapshot baseline, the first end-to-end short explanation flow, and the same-card detailed explanation flow are now in place, including visible-short-content gating, independent detail request state, same-card model reuse, detail retry replacement, and in-card model-reselection recovery for both short and detail areas
+- Current overall status: `Batches 0-8 complete`
+- Current execution point: release-readiness closure completed from the short and detailed explanation baseline
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, the options-page settings surface, the content-script in-page trigger plus card-shell snapshot baseline, the first end-to-end short explanation flow, the same-card detailed explanation flow, and the final `Batch 8` hardening and release-readiness fixes are now in place. The release-blocking content-script injection build regression and strict origin-only runtime trust-boundary blocker have both been resolved, and the final automated plus real-browser verification pass has been re-run against the updated implementation.
 
 ## 3. Completed
 
@@ -125,20 +125,19 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 4. In Progress
 
-- None currently recorded
+- In progress: no active implementation batch; `Batch 8` closure and verification are complete
 
 ## 5. Next Up
 
 ### Immediate Next Actions
 
-- Begin `Batch 8: Hardening and Release Readiness`
-- Reuse the completed short and detailed explanation flows for final verification and contract hardening
-- Add only the remaining high-value tests and finish final manual and document-alignment review work
+- No immediate implementation blocker is currently open
+- Use the updated local setup flow and release-readiness record as the baseline for future changes
 
 ### First Coding Targets
 
-- Next target: `Batch 8: Hardening and Release Readiness`
-- Planned focus: final verification, document-alignment review, controlled deferrals, and release-readiness documentation
+- Current target: none; the current baseline is the completed `Batch 8` release-ready build
+- Active focus: preserve the documented worker-only localhost boundary and hybrid trust contract in future changes
 
 ## 6. Current Batch Tracking
 
@@ -226,10 +225,10 @@ Review note:
 - The hover-open path now revalidates the current live selection before opening the card and captures the accepted snapshot only after that revalidation succeeds
 - Verified the batch with focused extension tests, extension type-check, production build, lint inspection, and source checks covering accepted-snapshot timing, replacement semantics, native-highlight loss behavior, and page-instance rotation
 - Formal post-batch alignment review finding 1 (high): `extension/src/content/state/selection-interaction.ts` currently replaces an already open interaction whenever a non-null live selection is observed, even when that live selection is the same still-valid selection that originally opened the card; because `start-content-app.ts` re-applies selection handling on later `selectionchange`, `mouseup`, and `keyup` events, this breaks the approved accepted-snapshot rule by dropping the card back to `triggerVisible`
-- Formal post-batch alignment review finding 2 (medium, cross-batch follow-up): `server/app/core/origin_validation.py` defines `ensure_allowed_origin()`, but the current API route path still relies on CORS configuration alone, so `GET /health` and `GET /v1/models` succeed without an allowed `Origin` header; this remains misaligned with the approved local-service allowed-origin enforcement requirement and should be fixed before stream work builds on the same path
+- Formal post-batch alignment review finding 2 (medium, cross-batch follow-up): `server/app/core/origin_validation.py` already held the centralized trust helper, but the API route path still relied on CORS configuration alone, so `GET /health` and `GET /v1/models` succeeded without an allowed extension-identity signal; this remained misaligned with the approved local-service trust-boundary enforcement requirement and needed to be fixed before stream work built on the same path
 - Formal post-batch alignment review finding 3 (low, cross-batch follow-up): `extension/src/options/actions/load-settings.ts` still reads `settings.lastKnownModels` and `settings.lastModelRefreshAt` directly from `chrome.storage.local` for diagnostics instead of going through a worker-backed message contract; selected-model writes remain correctly validated through `settings.setSelectedModel`, but the settings-surface boundary is no longer fully worker-backed for those diagnostics fields
 - Follow-up fix applied: `extension/src/content/state/selection-interaction.ts` now preserves an already open interaction when the current live selection still matches the accepted card snapshot, so later `selectionchange`, `mouseup`, or `keyup` events no longer demote the same open card back to `triggerVisible`; focused content tests now include an explicit regression check for this case
-- Follow-up fix applied: `server/app/api/health.py` and `server/app/api/models.py` now enforce the trusted extension `Origin` explicitly through `ensure_allowed_origin()` instead of relying on CORS configuration alone; the current server tests now verify that missing or untrusted origins are rejected with `403 Forbidden` while the trusted extension origin still preserves the existing success-path behavior
+- Follow-up fix applied: `server/app/api/health.py` and `server/app/api/models.py` now enforce the centralized extension-identity validation helper instead of relying on CORS configuration alone; the current server tests verify that missing or untrusted identity signals are rejected with `403 Forbidden` while the trusted extension path preserves the existing success-path behavior
 - Follow-up fix applied: the options settings surface now reads stale-cache diagnostics through the worker-backed `settings.getSelectedModel` response instead of directly from `chrome.storage.local`; shared contracts, worker handler behavior, options loading logic, and the related design and API documents were updated together so diagnostics remain worker-backed but still non-authoritative
 - Alignment result: the post-`Batch 5` follow-up items are now resolved, so the alignment gate for the completed baseline through `Batch 5` can be treated as cleanly passed and `Batch 6` may begin
 
@@ -262,14 +261,28 @@ Review note:
 
 ### Batch 8: Hardening and Release Readiness
 
-- Status: Not started
+- Status: Completed
 - Goal: finish verification, alignment review, and release-readiness checks
+
+Progress note:
+
+- Added focused worker regression coverage for the two highest-risk remaining runtime-hardening paths: bridge-loss normalization to retryable `request_failed` and startup-time local-service timeout normalization to retryable `request_failed`
+- Re-ran the automated verification baseline after the new coverage landed: extension tests, extension type-check, extension production build, and full server pytest suite are all passing
+- Added repeatable local setup and run instructions to `README.md`, including the trusted-extension-id requirement for starting the local API against a loaded unpacked build
+- Explicitly recorded the currently accepted v1 controlled deferrals so release-readiness review does not depend on chat-only memory
+- Executed a real-browser verification attempt using a loaded unpacked extension in Playwright Chromium, discovered extension id `ogainmanhpcodfdgafgpokdoejjlpjah`, and verified that the server responds correctly when explicitly called with that trusted origin via `curl`
+- Resolved the release-blocking content-script injection regression by splitting the content-script build into a dedicated single-entry output that produces a directly injectable `dist/content.js` with no top-level `import`
+- Resolved the release-blocking runtime trust-boundary question by updating the worker and local API to the documented hybrid rule: accept the trusted extension `Origin` when present, or the worker-controlled `X-SnapInsight-Extension-Id` fallback header when browser `Origin` behavior is missing or incompatible
+- Added focused extension and server verification coverage for the worker trust header and the hybrid server validation path, then re-ran extension tests, extension type-check, extension production build, and full server pytest successfully
+- Re-ran real-browser verification with the updated build and server: the options page now loads live models through the worker, the content script mounts successfully, valid selection re-exposes the trigger, hover opens the card, and the worker reaches `POST /v1/explanations/stream` through the restored localhost trust path
+- Recorded the resolved follow-up in `docs/discovery/extension-origin-validation-runtime-question.md`
+- Applied a post-closure hardening fix after real use uncovered two remaining gaps: card-internal model-selection actions now bind on press events so active browser text selection no longer suppresses card interaction, and the Ollama adapter now uses the chat streaming path with `think: false`, restoring real-browser short-explanation text streaming for `qwen3.5:0.8b`
 
 ## 7. Open Risks and Blockers
 
 ### Active Blockers
 
-- None currently recorded
+- No active blockers are currently recorded
 
 ### Known Risks
 
@@ -277,6 +290,13 @@ Review note:
 - local-environment variability around Ollama availability
 - stale-event handling bugs if routing and reset logic are incomplete
 - accidental cross-runtime coupling during initial scaffolding
+
+### Controlled Deferrals
+
+- richer visual polish beyond core usability
+- broader compatibility beyond the documented v1 scope
+- stronger local-process trust guarantees beyond the fixed-port identity check
+- non-essential refinement of `input` or `textarea` geometry fallback behavior unless it blocks accepted v1 behavior
 
 ## 8. Implementation Notes
 
@@ -322,3 +342,8 @@ Avoid vague entries such as:
 - Recorded the fix for the server allowed-origin enforcement gap by wiring explicit `Origin` validation into `GET /health` and `GET /v1/models`, adding focused integration coverage for missing and untrusted origins, and removing that issue from the active blockers that still gate `Batch 6`.
 - Recorded `Batch 6` completion, including the short explanation end-to-end flow, focused extension and server verification, the final interaction-scoping fix for stale same-text async rebinding, and a clean post-batch alignment review outcome with no remaining substantive findings.
 - Recorded `Batch 7` completion, including same-card detail rendering, independent detail request coordination, detail-side model-reselection recovery, focused verification, and a clean post-batch alignment review outcome with no remaining substantive findings.
+- Recorded the start of `Batch 8` hardening work, including new worker regression coverage for bridge-loss and timeout normalization, repeatable local setup and run documentation in `README.md`, and explicit controlled-deferral tracking in the project progress record.
+- Recorded the `Batch 8` manual browser-side verification attempt and final document-alignment review result, including the discovery of a release-blocking runtime question around strict extension-origin validation in a real loaded-browser environment and the follow-up discovery note that now tracks it.
+- Recorded `Batch 8` completion, including the dedicated single-file content-script build, the hybrid localhost trust boundary, focused worker and server trust-path coverage, refreshed automated verification, and real-browser confirmation that options-page model loading and in-page trigger or card activation are restored.
+- Recorded a post-closure follow-up fix for real-use regressions: content-card actions now tolerate active native selection without losing press handling, the Ollama adapter now uses the chat streaming path with `think: false`, and real-browser verification now confirms visible short-explanation text reaches the card for `qwen3.5:0.8b`.
+- Recorded a follow-up content-card readability fix: the card body now scrolls within a viewport-bounded shell for long detailed explanations, the response renderer now converts common markdown blocks and inline styles into formatted HTML, and focused rendering coverage was added before rebuilding the extension bundle.

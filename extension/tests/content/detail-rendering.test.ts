@@ -297,3 +297,67 @@ test("detail selected-model error renders the in-card model picker in the detail
     restoreWindow();
   }
 });
+
+test("detail markdown content renders formatted blocks inside scrollable card body", () => {
+  const root = createMockRoot();
+  const restoreWindow = installMockWindow();
+  const shortRequestState = applyChunkToRequestState(
+    applyForwardedStartEvent(createStartingRequestState("short", "req-short"), {
+      event: "start",
+      requestId: "req-short",
+      mode: "short",
+      model: "llama3.1:8b"
+    }),
+    "简短解释。"
+  );
+  const detailRequestState = applyChunkToRequestState(
+    applyForwardedStartEvent(createStartingRequestState("detailed", "req-detail"), {
+      event: "start",
+      requestId: "req-detail",
+      mode: "detailed",
+      model: "llama3.1:8b"
+    }),
+    "# 文档\n\n- **结构化说明**\n- 第二项"
+  );
+
+  try {
+    renderContentApp(
+      root,
+      {
+        ...createOpenState(),
+        detailExpanded: true,
+        shortRequestState,
+        detailRequestState
+      },
+      {
+        anchorRect: null
+      },
+      {
+        shortDispatchPending: false,
+        detailDispatchPending: false,
+        modelPicker: {
+          phase: "idle",
+          targetArea: null,
+          options: [],
+          selectedModel: null,
+          error: null
+        }
+      },
+      {
+        onTriggerHover: () => {},
+        onCloseCard: () => {},
+        onRetryShort: () => {},
+        onExpandDetail: () => {},
+        onRetryDetail: () => {},
+        onModelSelectionChange: () => {},
+        onSaveModelSelection: () => {}
+      }
+    );
+
+    assert.match(root.innerHTML, /overflow-y: auto/);
+    assert.match(root.innerHTML, /<h1>文档<\/h1>/);
+    assert.match(root.innerHTML, /<strong>结构化说明<\/strong>/);
+  } finally {
+    restoreWindow();
+  }
+});

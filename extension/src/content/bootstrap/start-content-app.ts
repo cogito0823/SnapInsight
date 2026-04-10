@@ -33,6 +33,7 @@ import {
   createStartingRequestState
 } from "../state/request-state";
 import { renderContentApp } from "../ui/render-app";
+import { shouldIgnoreCardClickAway } from "../ui/click-away";
 import { ensureShadowRoot } from "../ui/shadow-root";
 import type { ExtensionError } from "../../shared/errors/error-codes";
 import type { ModelSummary } from "../../shared/models/model-summary";
@@ -65,6 +66,23 @@ function createInitialViewState(): ContentViewState {
   };
 }
 
+function clearNativeSelectionAfterCardOpen(): void {
+  const activeElement = document.activeElement;
+
+  if (
+    activeElement instanceof HTMLInputElement ||
+    activeElement instanceof HTMLTextAreaElement
+  ) {
+    const end = activeElement.selectionEnd;
+    if (end !== null) {
+      activeElement.setSelectionRange(end, end);
+    }
+    return;
+  }
+
+  window.getSelection()?.removeAllRanges();
+}
+
 export function startContentApp(): void {
   if (document.documentElement.hasAttribute(CONTENT_APP_MARKER)) {
     return;
@@ -80,6 +98,7 @@ export function startContentApp(): void {
   let shortDispatchVersion = 0;
   let detailDispatchVersion = 0;
   let modelPickerDispatchVersion = 0;
+  let modelPickerInteracting = false;
 
   const clearPendingSelection = (): void => {
     pendingSelection = null;
@@ -90,7 +109,18 @@ export function startContentApp(): void {
   };
 
   const resetViewState = (): void => {
+    modelPickerInteracting = false;
     replaceViewState(createInitialViewState());
+  };
+
+  const markModelPickerInteractionStart = (): void => {
+    modelPickerInteracting = true;
+  };
+
+  const markModelPickerInteractionEnd = (): void => {
+    globalThis.setTimeout(() => {
+      modelPickerInteracting = false;
+    }, 0);
   };
 
   const rotateInteractionVersion = (): number => {
@@ -143,6 +173,7 @@ export function startContentApp(): void {
           rotateInteractionVersion();
           resetViewState();
           state = next.state;
+          clearNativeSelectionAfterCardOpen();
           render();
           void startShortExplanation();
         },
@@ -176,6 +207,12 @@ export function startContentApp(): void {
         },
         onSaveModelSelection: () => {
           void saveSelectedModelAndRetry();
+        },
+        onModelSelectionInteractionStart: () => {
+          markModelPickerInteractionStart();
+        },
+        onModelSelectionInteractionEnd: () => {
+          markModelPickerInteractionEnd();
         }
       }
     );
@@ -590,7 +627,14 @@ export function startContentApp(): void {
       return;
     }
 
-    if (event.composedPath().includes(shadowRootHandle.host)) {
+    if (
+      shouldIgnoreCardClickAway(
+        event,
+        shadowRootHandle.host,
+        shadowRootHandle.root,
+        modelPickerInteracting
+      )
+    ) {
       return;
     }
 

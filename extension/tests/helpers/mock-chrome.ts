@@ -46,6 +46,7 @@ export function installMockChrome(options?: {
 
   const chromeMock = {
     runtime: {
+      id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       lastError: undefined as chrome.runtime.LastError | undefined,
       onMessage: {
         addListener: (listener) => {

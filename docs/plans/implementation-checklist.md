@@ -127,110 +127,115 @@ This document should be updated during implementation rather than treated as a s
 
 ### Batch 8: Hardening and Release Readiness
 
-- [ ] Add only the tests that materially protect contract, state, and core flow behavior
-- [ ] Document local setup and run instructions
-- [ ] Run the final manual verification checklist
-- [ ] Run the final document alignment review checklist
-- [ ] Record remaining controlled deferrals explicitly
-- [ ] Update `docs/plans/project-progress.md`
+- [x] Add only the tests that materially protect contract, state, and core flow behavior
+- [x] Document local setup and run instructions
+- [x] Run the final manual verification checklist
+- [x] Run the final document alignment review checklist
+- [x] Record remaining controlled deferrals explicitly
+- [x] Update `docs/plans/project-progress.md`
 
 ## 3. Final Verification Checklist
 
 ### Core User Flow
 
-- [ ] Valid `1-20` selection shows the trigger near the selection
-- [ ] Invalid or oversized selection does not show the trigger
-- [ ] Card opens from hover and remains visible until explicit close or click-away
-- [ ] Ordinary page text and `input` or `textarea` work within v1 scope
-- [ ] Short explanation shows loading and progressive streaming output
-- [ ] Short explanation remains concise and Chinese-first where appropriate
-- [ ] Detailed explanation opens inside the same card
-- [ ] Detailed explanation remains blocked until short explanation content is visibly present
-- [ ] Detailed explanation prioritizes fuller definition, background, usage scenarios, and examples
-- [ ] Detailed explanation failure affects only the detail area and preserves short content
-- [ ] Selecting new text replaces the old interaction without stale content leakage
+- [x] Valid `1-20` selection shows the trigger near the selection
+- [x] Invalid or oversized selection does not show the trigger
+- [x] Card opens from hover and remains visible until explicit close or click-away
+- [x] Ordinary page text and `input` or `textarea` work within v1 scope
+- [x] Short explanation shows loading and progressive streaming output
+- [x] Short explanation remains concise and Chinese-first where appropriate
+- [x] Detailed explanation opens inside the same card
+- [x] Detailed explanation remains blocked until short explanation content is visibly present
+- [x] Detailed explanation prioritizes fuller definition, background, usage scenarios, and examples
+- [x] Detailed explanation failure affects only the detail area and preserves short content
+- [x] Selecting new text replaces the old interaction without stale content leakage
 
 ### Settings and Models
 
-- [ ] First use requires explicit model selection
-- [ ] Options page loads current settings through the worker
-- [ ] `settings.getSelectedModel` works as a read-only convenience contract
-- [ ] Valid selected model persists across browser restart
-- [ ] Stale selected model is rejected with `selected_model_unavailable`
-- [ ] No-models state is distinct from service-unavailable state
-- [ ] In-page picker appears only when model selection is missing or invalid
-- [ ] In-page picker and options page share the same validated persistence path
-- [ ] Stale cached models and last refresh time remain diagnostic-only
+- [x] First use requires explicit model selection
+- [x] Options page loads current settings through the worker
+- [x] `settings.getSelectedModel` works as a read-only convenience contract
+- [x] Valid selected model persists across browser restart
+- [x] Stale selected model is rejected with `selected_model_unavailable`
+- [x] No-models state is distinct from service-unavailable state
+- [x] In-page picker appears only when model selection is missing or invalid
+- [x] In-page picker and options page share the same validated persistence path
+- [x] Stale cached models and last refresh time remain diagnostic-only
 
 ### Local Service and Contract
 
-- [ ] `GET /health` returns the expected service identity
-- [ ] Wrong-service identity is treated as `local_service_conflict`
-- [ ] `GET /v1/models` returns documented success and no-models shapes
-- [ ] Streaming endpoint follows the documented event schema
-- [ ] Streaming endpoint uses `application/x-ndjson`
-- [ ] Invalid payloads fail before stream establishment with the documented HTTP boundary
-- [ ] Disallowed extension origins are rejected according to the documented contract
-- [ ] Post-start failures become terminal stream `error` events rather than changed HTTP status
-- [ ] Event routing uses both `requestId` and `senderContext`
+- [x] `GET /health` returns the expected service identity
+- [x] Wrong-service identity is treated as `local_service_conflict`
+- [x] `GET /v1/models` returns documented success and no-models shapes
+- [x] Streaming endpoint follows the documented event schema
+- [x] Streaming endpoint uses `application/x-ndjson`
+- [x] Invalid payloads fail before stream establishment with the documented HTTP boundary
+- [x] Disallowed extension origins are rejected according to the documented contract
+- [x] Post-start failures become terminal stream `error` events rather than changed HTTP status
+- [x] Event routing uses both `requestId` and `senderContext`
 
 ### State and Persistence
 
-- [ ] Page-local state matches the documented ownership and reset rules
-- [ ] Reload or same-tab navigation generates a new `pageInstanceId`
-- [ ] Loss of native browser highlight alone does not reset an open card
-- [ ] Selected text is never persisted
-- [ ] Explanation output is never persisted
-- [ ] Sender context, geometry, request ids, and per-request error state are never persisted
-- [ ] Cached model data is not treated as authoritative for validation
+- [x] Page-local state matches the documented ownership and reset rules
+- [x] Reload or same-tab navigation generates a new `pageInstanceId`
+- [x] Loss of native browser highlight alone does not reset an open card
+- [x] Selected text is never persisted
+- [x] Explanation output is never persisted
+- [x] Sender context, geometry, request ids, and per-request error state are never persisted
+- [x] Cached model data is not treated as authoritative for validation
 
 ### Failure and Recovery
 
-- [ ] Startup failures follow the documented deterministic mapping
-- [ ] Bridge loss becomes retryable `request_failed`
-- [ ] Worker-owned local-service request timeouts become retryable `request_failed`
-- [ ] Explicit cancellation, if surfaced, uses `request_cancelled`
-- [ ] Silent user-driven cancellation does not require a visible terminal error
-- [ ] Partial streamed text remains visible after an in-stream terminal error
+- [x] Startup failures follow the documented deterministic mapping
+- [x] Bridge loss becomes retryable `request_failed`
+- [x] Worker-owned local-service request timeouts become retryable `request_failed`
+- [x] Explicit cancellation, if surfaced, uses `request_cancelled`
+- [x] Silent user-driven cancellation does not require a visible terminal error
+- [x] Partial streamed text remains visible after an in-stream terminal error
 
 ## 4. Final Document Alignment Review
 
 ### PRD Alignment
 
-- [ ] Interaction remains within approved PRD scope and acceptance criteria
-- [ ] Privacy requirements remain satisfied
+- [x] Interaction remains within approved PRD scope and acceptance criteria
+- [x] Privacy requirements remain satisfied
 
 ### Design Alignment
 
-- [ ] Runtime ownership still matches content script, worker, options page, and local service responsibilities
-- [ ] Blocked setup states remain in the card interaction
-- [ ] In-page picker remains an escape hatch rather than a second persistent settings surface
-- [ ] Same-card snapshot and effective-model ownership rules remain intact
+- [x] Runtime ownership still matches content script, worker, options page, and local service responsibilities
+- [x] Blocked setup states remain in the card interaction
+- [x] In-page picker remains an escape hatch rather than a second persistent settings surface
+- [x] Same-card snapshot and effective-model ownership rules remain intact
 
 ### Repository-Structure Alignment
 
-- [ ] File placement follows the approved repository and module-boundary guidance
-- [ ] No accidental direct dependency exists from content modules into worker implementation modules
-- [ ] Shared modules hold contracts and reusable serializable types rather than runtime-owned state logic
+- [x] File placement follows the approved repository and module-boundary guidance
+- [x] No accidental direct dependency exists from content modules into worker implementation modules
+- [x] Shared modules hold contracts and reusable serializable types rather than runtime-owned state logic
 
 ### API-Spec Alignment
 
-- [ ] Local HTTP endpoints, payloads, and error behavior still match the API spec
-- [ ] Stream event ordering and terminal-event rules are preserved
-- [ ] NDJSON content type, pre-stream failure boundary, and origin-rejection behavior are preserved
-- [ ] Internal message contracts remain aligned across extension runtimes
-- [ ] Public error codes remain unchanged unless documents are updated first
+- [x] Local HTTP endpoints, payloads, and error behavior still match the API spec
+- [x] Stream event ordering and terminal-event rules are preserved
+- [x] NDJSON content type, pre-stream failure boundary, and origin-rejection behavior are preserved
+- [x] Internal message contracts remain aligned across extension runtimes
+- [x] Public error codes remain unchanged unless documents are updated first
 
 ### State-Spec Alignment
 
-- [ ] Page-local state fields match the documented shape
-- [ ] Request lifecycle transitions match the documented rules
-- [ ] Storage keys and persistence rules match documented constraints
-- [ ] Stale cache remains diagnostic-only
-- [ ] `settings.getSelectedModel` remains a convenience read contract rather than an authoritative startup prerequisite
-- [ ] Options-page behavior still respects worker-backed persistence and card-local active-model isolation
+- [x] Page-local state fields match the documented shape
+- [x] Request lifecycle transitions match the documented rules
+- [x] Storage keys and persistence rules match documented constraints
+- [x] Stale cache remains diagnostic-only
+- [x] `settings.getSelectedModel` remains a convenience read contract rather than an authoritative startup prerequisite
+- [x] Options-page behavior still respects worker-backed persistence and card-local active-model isolation
 
 ## 5. Change Log
 
 - Initial implementation checklist created from the current implementation plan and implementation-level design documents.
 - Added the dedicated options-page implementation-level design document to the related-document set so Batch 4 settings-surface work has an explicit implementation guide.
+- Batch 8 started with focused release-readiness work: added worker regression coverage for bridge-loss and startup-time timeout normalization, documented local setup and run instructions in `README.md`, and began checking off final verification items backed by automated evidence.
+- Batch 8 manual verification and final alignment review were executed. The review found one remaining release-blocking runtime question around strict extension-origin validation in a real loaded-browser environment, recorded in `docs/discovery/extension-origin-validation-runtime-question.md`.
+- Batch 8 release-readiness closure completed: content-script production output now builds as a directly injectable single file, the worker and local API now use the documented hybrid trust boundary, focused header-validation tests were added, and real-browser verification confirmed restored options-page model loading plus in-page trigger and card activation.
+- Post-closure follow-up verification fixed two remaining real-use gaps: active native text selection no longer suppresses content-card model actions, and the server's Ollama adapter now streams visible answer text for `qwen3.5:0.8b` through the chat API with `think: false`, which was re-verified in a real loaded-browser flow.
+- Post-closure content-card UI hardening improved long-detail readability: the card body now scrolls inside a bounded viewport height, the explanation renderer now formats common markdown output instead of showing raw syntax, and focused content rendering tests plus a production rebuild were completed.

@@ -26,7 +26,7 @@ class InvalidRequestError(SnapInsightError):
     pass
 
 
-class OriginNotAllowedError(SnapInsightError):
+class ExtensionIdentityNotAllowedError(SnapInsightError):
     pass
 
 
@@ -42,7 +42,9 @@ def create_request_failed_error(message: str) -> PublicError:
     )
 
 
-def create_forbidden_request_error(message: str = "The request origin is not allowed.") -> PublicError:
+def create_forbidden_request_error(
+    message: str = "The request extension identity is not allowed.",
+) -> PublicError:
     return PublicError(
         code="request_failed",
         message=message,

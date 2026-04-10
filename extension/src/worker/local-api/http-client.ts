@@ -6,11 +6,19 @@ import {
 import { createTimeoutSignal } from "./timeouts";
 
 const LOCAL_API_BASE_URL = "http://127.0.0.1:11435";
+export const EXTENSION_ID_HEADER = "X-SnapInsight-Extension-Id";
 
 export interface JsonResponse<T> {
   status: number;
   data: T;
   headers: Headers;
+}
+
+export function appendLocalApiTrustHeaders(headers: Headers): void {
+  const extensionId = chrome.runtime.id?.trim();
+  if (extensionId) {
+    headers.set(EXTENSION_ID_HEADER, extensionId);
+  }
 }
 
 export async function requestJson<T>(
@@ -20,6 +28,7 @@ export async function requestJson<T>(
 ): Promise<JsonResponse<T>> {
   const headers = new Headers(init.headers);
   headers.set("Accept", expectedContentType);
+  appendLocalApiTrustHeaders(headers);
 
   const timeout = createTimeoutSignal();
 

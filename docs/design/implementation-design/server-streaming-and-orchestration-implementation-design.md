@@ -250,7 +250,7 @@ Rules:
 Flow:
 
 1. route validates request body
-2. route validates allowed origin
+2. route validates the extension identity through the centralized trust helper, accepting either the trusted `Origin` or the worker-controlled `X-SnapInsight-Extension-Id` fallback header
 3. route calls `explanation_service` for startup checks
 4. if startup fails before stream establishment, route returns JSON error with the correct HTTP status
 5. if startup succeeds, route starts an NDJSON stream
@@ -341,7 +341,7 @@ Server code should centralize internal-to-public error mapping.
 Recommended internal categories:
 
 - `InvalidRequestError`
-- `OriginNotAllowedError`
+- `ExtensionIdentityNotAllowedError`
 - `SelectedModelUnavailableError`
 - `NoModelsAvailableState`
 - `UpstreamUnavailableError`
@@ -353,7 +353,7 @@ Recommended public mapping:
 | Internal condition | HTTP / stream outcome |
 | --- | --- |
 | invalid request | `400` + `invalid_request` |
-| origin not allowed | `403` |
+| extension identity not allowed | `403` |
 | no selectable model exists before explanation stream | `409` + `selected_model_unavailable` |
 | selected model unavailable before stream | `409` + `selected_model_unavailable` |
 | no models available during model-list request | `200` + `state: "no_models_available"` |
@@ -394,9 +394,12 @@ Allowed-origin validation should be centralized in `core/origin_validation.py` o
 
 Rules:
 
-- the service must only trust allowed `chrome-extension://<extension-id>` origins
+- the service must trust a localhost request when at least one approved extension-identity signal is valid:
+  - the browser-provided `Origin` matches the trusted `chrome-extension://<extension-id>` origin
+  - or the worker-controlled `X-SnapInsight-Extension-Id` header matches the trusted extension id
 - origin rejection for explanation streaming should happen before stream establishment
 - origin validation should not be reimplemented separately in each route
+- the fallback header path exists only to tolerate runtime environments where browser-provided extension `Origin` behavior is missing or incompatible; it does not change the rule that the extension service worker is the only supported localhost caller
 
 ### 11.1 Configuration Source
 
@@ -405,6 +408,7 @@ The trusted extension origin should come from server configuration loaded throug
 Recommended rule:
 
 - prefer one explicit configured value that represents the allowed extension identity for the current environment, either as the full trusted origin or as an extension id that `origin_validation.py` converts into `chrome-extension://<extension-id>`
+- derive the trusted extension id from the same configuration source so the fallback header path and the `Origin` path stay aligned
 - application startup should fail closed if the trusted extension identity is missing, malformed, or incompatible with the origin-validation helper
 - route handlers should consume the centralized validated configuration rather than reconstructing allowlist values ad hoc
 - the exact packaging or build mechanism that keeps the extension id stable may remain an implementation detail, but the server-side trust decision must still come from explicit configuration rather than an undocumented constant
@@ -505,3 +509,4 @@ The following topics should be covered elsewhere:
 - Marked the document as ready for project-owner approval review after the formal review and follow-up re-review found no remaining substantive findings.
 - Added explicit server-side privacy/logging guidance and origin-validation configuration-source guidance so implementation can fail closed without re-deriving trust rules during coding.
 - Marked the document `Approved` after project-owner sign-off confirmed it as the execution baseline for server implementation.
+- Updated the server trust-boundary design to a hybrid rule that accepts either the trusted extension `Origin` or the worker-controlled `X-SnapInsight-Extension-Id` header through one centralized validation path.

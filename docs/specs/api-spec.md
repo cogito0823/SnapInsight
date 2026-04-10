@@ -42,7 +42,11 @@ This spec does not define:
 - Allowed caller: Chrome extension `service worker`
 - Content script must not call the local API directly
 - Local service must only bind to `127.0.0.1`
-- Local service must validate allowed `chrome-extension://<extension-id>` origins
+- Local service must trust requests only when at least one approved extension-identity signal is valid:
+  - a browser-provided `Origin` exactly equal to `chrome-extension://<extension-id>`
+  - or a worker-controlled `X-SnapInsight-Extension-Id` header exactly equal to the configured trusted extension id
+- The service worker should send `X-SnapInsight-Extension-Id: <chrome.runtime.id>` on all local API requests as a compatibility fallback when browser-provided `Origin` behavior is missing or incompatible in a given runtime environment
+- If both signals are absent or invalid, the local service must reject the request with `403 Forbidden`
 
 ### 3.2 Content Types
 
@@ -158,6 +162,7 @@ Behavior rules:
 - `ollamaReachable` is dependency context only; it does not replace `GET /v1/models` as the source of truth for model availability.
 - the extension must verify `service == "snapinsight-local-api"` before trusting the fixed localhost port as the SnapInsight service
 - if the port responds but the `service` field is missing or mismatched, the extension must treat the result as a local service conflict and fail closed
+- the service worker should send `X-SnapInsight-Extension-Id: <chrome.runtime.id>` on this request even when a browser-provided `Origin` is expected, so the local service can tolerate runtime environments where the browser omits or alters the extension `Origin`
 
 Status codes:
 
@@ -270,7 +275,7 @@ Status codes:
 
 - `200 OK`: stream established successfully
 - `400 Bad Request`: invalid request payload detected before stream establishment
-- `403 Forbidden`: origin not allowed
+- `403 Forbidden`: extension identity not allowed
 - `409 Conflict`: selected model unavailable before stream establishment
 - `503 Service Unavailable`: required local dependency unavailable before stream establishment
 - `500 Internal Server Error`: unexpected failure before stream establishment
@@ -746,7 +751,7 @@ Setup-time failure mapping:
 | Detected condition | Internal error code |
 |------|---------|
 | Local service transport failure | `service_unavailable` |
-| Origin rejected before stream establishment | `request_failed` |
+| Extension identity rejected before stream establishment | `request_failed` |
 | Wrong-service identity on fixed port | `local_service_conflict` |
 | No usable selected model exists, or selected model is unavailable or rejected at startup | `selected_model_unavailable` |
 | Other startup or dependency failure | `request_failed` |
@@ -967,3 +972,4 @@ Rules:
 - Added `local_service_conflict`, per-document `pageInstanceId`, and explicit internal failure shapes for health-check and stream-setup edge cases.
 - Added the internal `models.list` success example for `no_models_available` and made same-card effective-model reuse explicit for detail and retry explanation-start requests.
 - Clarified that omitted `payload.model` resolution must not depend on hidden worker knowledge of card-local state and pinned origin rejection before stream establishment to extension-facing `request_failed`.
+- Updated the local trust boundary to a hybrid rule: the local service now accepts either the trusted extension `Origin` or the worker-controlled `X-SnapInsight-Extension-Id` header as the extension-identity signal, while preserving the existing `403` pre-stream failure boundary and extension-facing `request_failed` normalization.

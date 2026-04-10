@@ -8,7 +8,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         options: resolve(__dirname, "options.html"),
-        content: resolve(__dirname, "src/content/index.ts"),
         worker: resolve(__dirname, "src/worker/index.ts")
       },
       output: {

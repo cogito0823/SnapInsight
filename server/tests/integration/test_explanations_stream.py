@@ -53,10 +53,11 @@ class FakeExplanationService:
 
 class ExplanationStreamRouteTests(unittest.TestCase):
     trusted_origin = "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    trusted_extension_id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
     def make_client(self, service: FakeExplanationService) -> TestClient:
         settings = Settings(
-            trusted_extension_id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            trusted_extension_id=self.trusted_extension_id,
         )
         app = create_app(settings=settings)
         app.state.explanation_service = service
@@ -65,6 +66,12 @@ class ExplanationStreamRouteTests(unittest.TestCase):
     def allowed_origin_headers(self) -> dict[str, str]:
         return {
             "Origin": self.trusted_origin,
+            "Content-Type": "application/json",
+        }
+
+    def allowed_extension_id_headers(self) -> dict[str, str]:
+        return {
+            "X-SnapInsight-Extension-Id": self.trusted_extension_id,
             "Content-Type": "application/json",
         }
 
@@ -193,6 +200,36 @@ class ExplanationStreamRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["error"]["code"], "request_failed")
+
+    def test_stream_route_accepts_trusted_extension_id_header_without_origin(self) -> None:
+        service = FakeExplanationService(
+            events=[
+                StartStreamEvent(
+                    requestId="req-header",
+                    mode="short",
+                    model="llama3.1:8b",
+                ),
+                CompleteStreamEvent(requestId="req-header"),
+            ]
+        )
+        client = self.make_client(service)
+
+        response = client.post(
+            "/v1/explanations/stream",
+            headers=self.allowed_extension_id_headers(),
+            json={
+                "requestId": "req-header",
+                "text": "Transformer",
+                "model": "llama3.1:8b",
+                "mode": "short",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [json.loads(line)["event"] for line in response.text.strip().splitlines()],
+            ["start", "complete"],
+        )
 
     def test_stream_route_keeps_post_start_failures_inside_stream(self) -> None:
         client = self.make_client(

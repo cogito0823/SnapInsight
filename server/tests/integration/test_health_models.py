@@ -26,10 +26,11 @@ class FakeOllamaClient:
 
 class HealthAndModelsRouteTests(unittest.TestCase):
     trusted_origin = "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    trusted_extension_id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
     def make_client(self, fake_client: FakeOllamaClient) -> TestClient:
         settings = Settings(
-            trusted_extension_id="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            trusted_extension_id=self.trusted_extension_id,
         )
         app = create_app(settings=settings)
         app.state.health_service._ollama_probe = fake_client
@@ -39,6 +40,11 @@ class HealthAndModelsRouteTests(unittest.TestCase):
     def allowed_origin_headers(self) -> dict[str, str]:
         return {
             "Origin": self.trusted_origin,
+        }
+
+    def allowed_extension_id_headers(self) -> dict[str, str]:
+        return {
+            "X-SnapInsight-Extension-Id": self.trusted_extension_id,
         }
 
     def test_health_returns_service_identity(self) -> None:
@@ -81,11 +87,19 @@ class HealthAndModelsRouteTests(unittest.TestCase):
             {
                 "error": {
                     "code": "request_failed",
-                    "message": "The request origin is not allowed.",
+                    "message": "The request extension identity is not allowed.",
                     "retryable": False,
                 }
             },
         )
+
+    def test_health_accepts_trusted_extension_id_header_without_origin(self) -> None:
+        client = self.make_client(FakeOllamaClient(reachable=True))
+
+        response = client.get("/health", headers=self.allowed_extension_id_headers())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["service"], "snapinsight-local-api")
 
     def test_health_rejects_untrusted_origin(self) -> None:
         client = self.make_client(FakeOllamaClient(reachable=True))
@@ -183,11 +197,19 @@ class HealthAndModelsRouteTests(unittest.TestCase):
             {
                 "error": {
                     "code": "request_failed",
-                    "message": "The request origin is not allowed.",
+                    "message": "The request extension identity is not allowed.",
                     "retryable": False,
                 }
             },
         )
+
+    def test_models_accept_trusted_extension_id_header_without_origin(self) -> None:
+        client = self.make_client(FakeOllamaClient(models=[]))
+
+        response = client.get("/v1/models", headers=self.allowed_extension_id_headers())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["state"], "no_models_available")
 
     def test_models_reject_untrusted_origin(self) -> None:
         client = self.make_client(FakeOllamaClient(models=[]))

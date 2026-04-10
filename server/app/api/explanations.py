@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 
 from app.core.errors import (
-    OriginNotAllowedError,
+    ExtensionIdentityNotAllowedError,
     SelectedModelUnavailableError,
     UnexpectedServiceError,
     UpstreamUnavailableError,
@@ -16,7 +16,10 @@ from app.core.errors import (
     create_request_failed_error,
     create_selected_model_unavailable_error,
 )
-from app.core.origin_validation import ensure_allowed_origin
+from app.core.origin_validation import (
+    EXTENSION_ID_HEADER,
+    ensure_allowed_extension_identity,
+)
 from app.schemas.error_schema import build_error_response
 from app.schemas.explanation_schema import ExplanationRequest
 from app.schemas.stream_event_schema import encode_stream_event
@@ -27,13 +30,14 @@ router = APIRouter(prefix="/v1", tags=["explanations"])
 @router.post("/explanations/stream")
 async def post_explanations_stream(request: Request):
     try:
-        ensure_allowed_origin(
+        ensure_allowed_extension_identity(
             request.headers.get("origin"),
+            request.headers.get(EXTENSION_ID_HEADER),
             request.app.state.settings,
         )
         raw_payload = await request.json()
         payload = ExplanationRequest.model_validate(raw_payload)
-    except OriginNotAllowedError:
+    except ExtensionIdentityNotAllowedError:
         error = create_forbidden_request_error()
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,

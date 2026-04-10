@@ -18,8 +18,35 @@ function installFetchMock(
   };
 }
 
+function readHeader(init: RequestInit | undefined, name: string): string | null {
+  const headers = new Headers(init?.headers);
+  return headers.get(name);
+}
+
 async function flushMicrotasks(): Promise<void> {
   await new Promise((resolve) => globalThis.setTimeout(resolve, 0));
+}
+
+function installImmediateTimeouts(): () => void {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+
+  globalThis.setTimeout = (((handler: TimerHandler) => {
+    if (typeof handler === "function") {
+      handler();
+    }
+
+    return 1 as unknown as ReturnType<typeof setTimeout>;
+  }) as unknown) as typeof globalThis.setTimeout;
+
+  globalThis.clearTimeout = (((_timeoutId?: ReturnType<typeof setTimeout>) => {
+    return undefined;
+  }) as unknown) as typeof globalThis.clearTimeout;
+
+  return () => {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  };
 }
 
 test("accepted explanation startup forwards streamed events to the content script", async () => {
@@ -28,7 +55,13 @@ test("accepted explanation startup forwards streamed events to the content scrip
       "settings.selectedModel": "llama3.1:8b"
     }
   });
-  const restoreFetch = installFetchMock(async (input) => {
+  const trustHeaders: string[] = [];
+  const restoreFetch = installFetchMock(async (input, init) => {
+    const trustHeader = readHeader(init, "X-SnapInsight-Extension-Id");
+    if (trustHeader) {
+      trustHeaders.push(trustHeader);
+    }
+
     if (input.endsWith("/health")) {
       return new Response(
         JSON.stringify({
@@ -167,6 +200,170 @@ test("accepted explanation startup forwards streamed events to the content scrip
         }
       ]
     );
+    assert.deepEqual(trustHeaders, [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ]);
+  } finally {
+    restoreFetch();
+    chromeEnv.restore();
+  }
+});
+
+test("bridge loss is surfaced as retryable request_failed", async () => {
+  let sendAttempts = 0;
+  const chromeEnv = installMockChrome({
+    initialStorage: {
+      "settings.selectedModel": "llama3.1:8b"
+    },
+    tabsSendMessage: async () => {
+      sendAttempts += 1;
+      if (sendAttempts === 1) {
+        throw new Error("Bridge lost.");
+      }
+
+      return undefined;
+    }
+  });
+  const restoreFetch = installFetchMock(async (input) => {
+    if (input.endsWith("/health")) {
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          service: "snapinsight-local-api",
+          version: "v1",
+          ollamaReachable: true
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json"
+          }
+        }
+      );
+    }
+
+    if (input.endsWith("/v1/models")) {
+      return new Response(
+        JSON.stringify({
+          state: "ready",
+          models: [
+            {
+              id: "llama3.1:8b",
+              label: "llama3.1:8b",
+              provider: "ollama",
+              available: true
+            }
+          ]
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json"
+          }
+        }
+      );
+    }
+
+    if (input.endsWith("/v1/explanations/stream")) {
+      return new Response(
+        [
+          JSON.stringify({
+            event: "start",
+            requestId: "req-bridge",
+            mode: "short",
+            model: "llama3.1:8b"
+          }),
+          JSON.stringify({
+            event: "complete",
+            requestId: "req-bridge"
+          })
+        ].join("\n") + "\n",
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/x-ndjson"
+          }
+        }
+      );
+    }
+
+    throw new Error(`Unexpected fetch input: ${input}`);
+  });
+
+  try {
+    const response = await handleExplanationsStart(
+      {
+        type: "explanations.start",
+        payload: {
+          requestId: "req-bridge",
+          senderContext: {
+            tabId: -1,
+            frameId: 0,
+            pageInstanceId: "doc-bridge"
+          },
+          text: "Transformer",
+          mode: "short"
+        }
+      },
+      {
+        tab: {
+          id: 321
+        } as chrome.tabs.Tab,
+        frameId: 0
+      }
+    );
+
+    assert.equal(response.ok, true);
+
+    await flushMicrotasks();
+
+    assert.deepEqual(
+      chromeEnv.tabMessages.map((entry) => {
+        const payloadEvent =
+          typeof entry.message === "object" &&
+          entry.message !== null &&
+          "payload" in entry.message &&
+          typeof entry.message.payload === "object" &&
+          entry.message.payload !== null &&
+          "event" in entry.message.payload &&
+          typeof entry.message.payload.event === "object" &&
+          entry.message.payload.event !== null &&
+          "event" in entry.message.payload.event
+            ? (entry.message.payload.event as Record<string, unknown>)
+            : null;
+        const eventName =
+          payloadEvent && typeof payloadEvent.event === "string"
+            ? payloadEvent.event
+            : null;
+        const errorCode =
+          eventName === "error" &&
+          payloadEvent !== null &&
+          "error" in payloadEvent &&
+          typeof payloadEvent.error === "object" &&
+          payloadEvent.error !== null &&
+          "code" in payloadEvent.error &&
+          typeof payloadEvent.error.code === "string"
+            ? payloadEvent.error.code
+            : null;
+
+        return {
+          event: eventName,
+          errorCode
+        };
+      }),
+      [
+        {
+          event: "start",
+          errorCode: null
+        },
+        {
+          event: "error",
+          errorCode: "request_failed"
+        }
+      ]
+    );
   } finally {
     restoreFetch();
     chromeEnv.restore();
@@ -211,6 +408,115 @@ test("startup fails with selected_model_unavailable when no usable model exists"
     });
     assert.equal(chromeEnv.tabMessages.length, 0);
   } finally {
+    chromeEnv.restore();
+  }
+});
+
+test("worker timeout is surfaced as retryable request_failed", async () => {
+  const chromeEnv = installMockChrome({
+    initialStorage: {
+      "settings.selectedModel": "llama3.1:8b"
+    }
+  });
+  const restoreTimeouts = installImmediateTimeouts();
+  const restoreFetch = installFetchMock(async (input, init) => {
+    if (input.endsWith("/health")) {
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          service: "snapinsight-local-api",
+          version: "v1",
+          ollamaReachable: true
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json"
+          }
+        }
+      );
+    }
+
+    if (input.endsWith("/v1/models")) {
+      return new Response(
+        JSON.stringify({
+          state: "ready",
+          models: [
+            {
+              id: "llama3.1:8b",
+              label: "llama3.1:8b",
+              provider: "ollama",
+              available: true
+            }
+          ]
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json"
+          }
+        }
+      );
+    }
+
+    if (input.endsWith("/v1/explanations/stream")) {
+      if (init?.signal?.aborted) {
+        const abortError = new Error("Timed out.");
+        abortError.name = "AbortError";
+        throw abortError;
+      }
+
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          "abort",
+          () => {
+            const abortError = new Error("Timed out.");
+            abortError.name = "AbortError";
+            reject(abortError);
+          },
+          { once: true }
+        );
+      });
+    }
+
+    throw new Error(`Unexpected fetch input: ${input}`);
+  });
+
+  try {
+    const response = await handleExplanationsStart(
+      {
+        type: "explanations.start",
+        payload: {
+          requestId: "req-timeout",
+          senderContext: {
+            tabId: -1,
+            frameId: 0,
+            pageInstanceId: "doc-timeout"
+          },
+          text: "Transformer",
+          mode: "short"
+        }
+      },
+      {
+        tab: {
+          id: 321
+        } as chrome.tabs.Tab,
+        frameId: 0
+      }
+    );
+
+    assert.deepEqual(response, {
+      ok: false,
+      error: {
+        code: "request_failed",
+        message: "Explanation stream could not be started.",
+        retryable: true
+      }
+    });
+    assert.equal(chromeEnv.tabMessages.length, 0);
+  } finally {
+    restoreFetch();
+    restoreTimeouts();
     chromeEnv.restore();
   }
 });

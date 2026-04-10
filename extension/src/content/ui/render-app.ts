@@ -2,6 +2,7 @@ import type { ContentCardState } from "../state/card-state";
 import type { AnchorRect } from "../anchor/normalize-rect";
 import type { ExtensionError } from "../../shared/errors/error-codes";
 import type { ModelSummary } from "../../shared/models/model-summary";
+import { renderMarkdownToHtml } from "./markdown";
 
 const TRIGGER_SIZE = 28;
 const CARD_WIDTH = 320;
@@ -15,6 +16,8 @@ export interface RenderCallbacks {
   onRetryDetail: () => void;
   onModelSelectionChange: (modelId: string) => void;
   onSaveModelSelection: () => void;
+  onModelSelectionInteractionStart?: () => void;
+  onModelSelectionInteractionEnd?: () => void;
 }
 
 export interface TriggerViewState {
@@ -42,6 +45,17 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function renderResponseContent(text: string, fallback: string): string {
+  const normalized = text.trim();
+  if (!normalized) {
+    return `<div class="snapinsight-response-text">${escapeHtml(fallback)}</div>`;
+  }
+
+  return `<div class="snapinsight-response-markdown">${renderMarkdownToHtml(
+    text
+  )}</div>`;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -72,6 +86,28 @@ function computeCardStyle(anchorRect: AnchorRect): string {
   );
 
   return `top:${top}px;left:${left}px;width:${CARD_WIDTH}px;`;
+}
+
+function bindPressAction(
+  element: HTMLElement,
+  callback: () => void
+): void {
+  let ignoreNextClick = false;
+
+  element.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    ignoreNextClick = true;
+    callback();
+  });
+
+  element.addEventListener("click", () => {
+    if (ignoreNextClick) {
+      ignoreNextClick = false;
+      return;
+    }
+
+    callback();
+  });
 }
 
 function renderTrigger(anchorRect: AnchorRect): string {
@@ -190,11 +226,16 @@ function renderModelPicker(viewState: ModelPickerViewState): string {
       const optionMarkup = viewState.options
         .map(
           (model) => `
-            <option value="${escapeHtml(model.id)}"${
-              model.id === viewState.selectedModel ? " selected" : ""
-            }>
+            <button
+              type="button"
+              class="snapinsight-model-option${
+                model.id === viewState.selectedModel ? " is-selected" : ""
+              }"
+              data-model-option="${escapeHtml(model.id)}"
+              ${viewState.phase === "saving" ? "disabled" : ""}
+            >
               ${escapeHtml(model.label)}
-            </option>
+            </button>
           `
         )
         .join("");
@@ -208,13 +249,14 @@ function renderModelPicker(viewState: ModelPickerViewState): string {
           <label class="snapinsight-field-label" for="snapinsight-model-select">
             可用模型
           </label>
-          <select
+          <div
             id="snapinsight-model-select"
-            class="snapinsight-select"
-            ${viewState.phase === "saving" ? "disabled" : ""}
+            class="snapinsight-model-option-list"
+            role="listbox"
+            aria-label="可用模型"
           >
             ${optionMarkup}
-          </select>
+          </div>
           ${
             viewState.error
               ? `<div class="snapinsight-inline-error">${escapeHtml(
@@ -264,9 +306,7 @@ function renderShortSection(
     return `
       <div class="snapinsight-short-section">
         <div class="snapinsight-section-label">简短解释</div>
-        <div class="snapinsight-response-text">${escapeHtml(
-          request.textBuffer || "正在生成解释..."
-        )}</div>
+        ${renderResponseContent(request.textBuffer, "正在生成解释...")}
         ${
           request.phase === "streaming"
             ? '<div class="snapinsight-footnote">内容正在持续生成...</div>'
@@ -289,9 +329,7 @@ function renderShortSection(
         <div class="snapinsight-blocked-title">解释暂时不可用</div>
         ${
           request.textBuffer
-            ? `<div class="snapinsight-response-text">${escapeHtml(
-                request.textBuffer
-              )}</div>`
+            ? renderResponseContent(request.textBuffer, "")
             : ""
         }
         <div class="snapinsight-blocked-message">
@@ -343,9 +381,7 @@ function renderDetailSection(
     return `
       <div class="snapinsight-detail-section">
         <div class="snapinsight-section-label">详细解释</div>
-        <div class="snapinsight-response-text">${escapeHtml(
-          request.textBuffer || "正在生成更完整的解释..."
-        )}</div>
+        ${renderResponseContent(request.textBuffer, "正在生成更完整的解释...")}
         ${
           request.phase === "streaming"
             ? '<div class="snapinsight-footnote">详细解释正在持续生成...</div>'
@@ -371,9 +407,7 @@ function renderDetailSection(
         <div class="snapinsight-blocked-state">
           ${
             request.textBuffer
-              ? `<div class="snapinsight-response-text">${escapeHtml(
-                  request.textBuffer
-                )}</div>`
+              ? renderResponseContent(request.textBuffer, "")
               : ""
           }
           <div class="snapinsight-blocked-message">
@@ -439,12 +473,15 @@ export function renderContentApp(
       #snapinsight-card {
         position: fixed;
         pointer-events: auto;
+        display: flex;
+        flex-direction: column;
         box-sizing: border-box;
         border: 1px solid rgba(15, 23, 42, 0.08);
         border-radius: 14px;
         background: #fff;
         color: #0f172a;
         box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+        max-height: min(720px, calc(100vh - 16px));
         padding: 14px;
       }
 
@@ -483,8 +520,12 @@ export function renderContentApp(
 
       .snapinsight-card-body {
         color: #334155;
+        flex: 1;
         font-size: 13px;
         line-height: 1.5;
+        min-height: 0;
+        overflow-y: auto;
+        padding-right: 4px;
       }
 
       .snapinsight-short-section,
@@ -511,6 +552,79 @@ export function renderContentApp(
         line-height: 1.6;
         white-space: pre-wrap;
         word-break: break-word;
+      }
+
+      .snapinsight-response-markdown {
+        color: #0f172a;
+        line-height: 1.7;
+        word-break: break-word;
+      }
+
+      .snapinsight-response-markdown > :first-child {
+        margin-top: 0;
+      }
+
+      .snapinsight-response-markdown > :last-child {
+        margin-bottom: 0;
+      }
+
+      .snapinsight-response-markdown p,
+      .snapinsight-response-markdown ul,
+      .snapinsight-response-markdown ol,
+      .snapinsight-response-markdown hr {
+        margin: 0 0 10px;
+      }
+
+      .snapinsight-response-markdown h1,
+      .snapinsight-response-markdown h2,
+      .snapinsight-response-markdown h3,
+      .snapinsight-response-markdown h4,
+      .snapinsight-response-markdown h5,
+      .snapinsight-response-markdown h6 {
+        color: #0f172a;
+        font-weight: 700;
+        line-height: 1.4;
+        margin: 12px 0 8px;
+      }
+
+      .snapinsight-response-markdown h1 {
+        font-size: 18px;
+      }
+
+      .snapinsight-response-markdown h2 {
+        font-size: 16px;
+      }
+
+      .snapinsight-response-markdown h3 {
+        font-size: 14px;
+      }
+
+      .snapinsight-response-markdown ul,
+      .snapinsight-response-markdown ol {
+        padding-left: 18px;
+      }
+
+      .snapinsight-response-markdown li + li {
+        margin-top: 4px;
+      }
+
+      .snapinsight-response-markdown code {
+        border-radius: 6px;
+        background: #f8fafc;
+        color: #1e293b;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        padding: 1px 4px;
+      }
+
+      .snapinsight-response-markdown hr {
+        border: 0;
+        border-top: 1px solid rgba(148, 163, 184, 0.3);
+      }
+
+      .snapinsight-response-markdown a {
+        color: #1d4ed8;
+        text-decoration: underline;
       }
 
       .snapinsight-loading-state {
@@ -551,15 +665,31 @@ export function renderContentApp(
         font-weight: 600;
       }
 
-      .snapinsight-select {
+      .snapinsight-model-option-list {
+        display: grid;
+        gap: 6px;
+        max-height: 140px;
+        overflow-y: auto;
+      }
+
+      .snapinsight-model-option {
         border: 1px solid rgba(15, 23, 42, 0.12);
         border-radius: 10px;
-        box-sizing: border-box;
+        background: #fff;
         color: #0f172a;
+        cursor: pointer;
         font: inherit;
+        font-size: 12px;
         min-height: 36px;
         padding: 0 10px;
+        text-align: left;
         width: 100%;
+      }
+
+      .snapinsight-model-option.is-selected {
+        border-color: rgba(37, 99, 235, 0.45);
+        background: #eff6ff;
+        color: #1d4ed8;
       }
 
       .snapinsight-primary-button,
@@ -581,7 +711,7 @@ export function renderContentApp(
 
       .snapinsight-primary-button:disabled,
       .snapinsight-secondary-button:disabled,
-      .snapinsight-select:disabled {
+      .snapinsight-model-option:disabled {
         cursor: not-allowed;
         opacity: 0.6;
       }
@@ -634,33 +764,37 @@ export function renderContentApp(
 
   const closeButton = root.getElementById("snapinsight-close");
   if (closeButton instanceof HTMLButtonElement) {
-    closeButton.addEventListener("click", callbacks.onCloseCard);
+    bindPressAction(closeButton, callbacks.onCloseCard);
   }
 
   const retryButton = root.getElementById("snapinsight-retry-short");
   if (retryButton instanceof HTMLButtonElement) {
-    retryButton.addEventListener("click", callbacks.onRetryShort);
+    bindPressAction(retryButton, callbacks.onRetryShort);
   }
 
   const expandDetailButton = root.getElementById("snapinsight-expand-detail");
   if (expandDetailButton instanceof HTMLButtonElement) {
-    expandDetailButton.addEventListener("click", callbacks.onExpandDetail);
+    bindPressAction(expandDetailButton, callbacks.onExpandDetail);
   }
 
   const retryDetailButton = root.getElementById("snapinsight-retry-detail");
   if (retryDetailButton instanceof HTMLButtonElement) {
-    retryDetailButton.addEventListener("click", callbacks.onRetryDetail);
+    bindPressAction(retryDetailButton, callbacks.onRetryDetail);
   }
 
-  const modelSelect = root.getElementById("snapinsight-model-select");
-  if (modelSelect instanceof HTMLSelectElement) {
-    modelSelect.addEventListener("change", () => {
-      callbacks.onModelSelectionChange(modelSelect.value);
+  if (typeof root.querySelectorAll === "function") {
+    root.querySelectorAll<HTMLElement>("[data-model-option]").forEach((option) => {
+      const modelId = option.dataset.modelOption;
+      if (modelId) {
+        bindPressAction(option, () => {
+          callbacks.onModelSelectionChange(modelId);
+        });
+      }
     });
   }
 
   const saveModelButton = root.getElementById("snapinsight-save-model");
   if (saveModelButton instanceof HTMLButtonElement) {
-    saveModelButton.addEventListener("click", callbacks.onSaveModelSelection);
+    bindPressAction(saveModelButton, callbacks.onSaveModelSelection);
   }
 }
