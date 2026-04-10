@@ -46,6 +46,37 @@ flowchart LR
     optionsPage --> storage
 ```
 
+### 4.1 Runtime Request Sequence
+
+The following sequence shows the main v1 explanation flow from selection to streamed rendering.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant CS as Content Script
+    participant SW as Service Worker
+    participant API as Local Python Service
+    participant Ollama
+
+    User->>CS: Select valid text
+    CS->>CS: Validate selection and update page-local state
+    User->>CS: Trigger explanation
+    CS->>SW: explanations.start(requestId, senderContext, text, model, mode)
+    SW->>API: POST /v1/explanations/stream
+    API->>Ollama: Start generation
+    SW-->>CS: ok acknowledgement
+    API-->>SW: start event
+    SW-->>CS: explanations.event(start)
+    loop Stream chunks
+        API-->>SW: chunk event
+        SW-->>CS: explanations.event(chunk)
+        CS->>CS: Append to shortRequestState or detailRequestState
+    end
+    API-->>SW: complete or error event
+    SW-->>CS: explanations.event(complete or error)
+    CS->>CS: Transition request state to terminal phase
+```
+
 ## 5. Runtime Components
 
 ### 5.1 Chrome Extension
