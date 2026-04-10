@@ -2,13 +2,15 @@
 
 ## Document Status
 
-- Status: Draft
+- Status: Approved
 - Related Documents:
   - `docs/prd/PRD-snapinsight.md`
   - `docs/rfcs/RFC-001-extension-architecture.md`
   - `docs/rfcs/RFC-002-local-communication-and-security.md`
   - `docs/rfcs/RFC-003-python-service-and-ollama-integration.md`
+  - `docs/design/repository-and-code-structure.md`
   - `docs/specs/api-spec.md`
+  - `docs/specs/extension-state-spec.md`
 
 ## 1. Purpose
 
@@ -23,7 +25,7 @@ It does not reopen architectural choices already settled in the RFCs. Instead, i
 - Keep Ollama-specific details behind the Python service
 - Support streaming text display for both short and detailed explanations
 - Support best-effort request cancellation when the user changes context
-- Keep API boundaries stable enough for a later `docs/specs/api-spec.md`
+- Keep design ownership aligned with `docs/specs/api-spec.md` and `docs/specs/extension-state-spec.md`
 
 ## 3. Non-Goals
 
@@ -43,8 +45,9 @@ flowchart LR
     localApi --> ollama[LocalOllama]
     serviceWorker --> storage[ChromeStorageLocal]
     optionsPage[OptionsPage] --> serviceWorker
-    optionsPage --> storage
 ```
+
+The options page should use service-worker-backed settings flows rather than owning a separate direct-write path to `chrome.storage.local`.
 
 ### 4.1 Runtime Request Sequence
 
@@ -60,8 +63,11 @@ sequenceDiagram
 
     User->>CS: Select valid text
     CS->>CS: Validate selection and update page-local state
-    User->>CS: Trigger explanation
-    CS->>SW: explanations.start(requestId, senderContext, text, model, mode)
+    User->>CS: Hover trigger
+    CS->>CS: Open card from interaction snapshot
+    CS->>SW: explanations.start(requestId, senderContext, text, mode[, model])
+    SW->>SW: Resolve effective model from payload or persisted settings
+    SW->>SW: Fail with selected_model_unavailable if no usable model exists
     SW->>API: POST /v1/explanations/stream
     API->>Ollama: Start generation
     SW-->>CS: ok acknowledgement
@@ -95,6 +101,7 @@ Responsibilities:
   - short explanation stream state
   - detailed explanation expanded state
   - per-view loading and error state
+- Freeze the accepted selection into a card-scoped interaction snapshot once the user successfully opens the card
 - Send structured requests to the service worker
 - Attach page-instance routing context to active explanation requests, including `tabId`, `frameId`, and a per-document `pageInstanceId`
 - Abort or replace page-local request state when the user selects a new term or closes the card
@@ -120,6 +127,7 @@ Responsibilities:
 - Read and write persistent settings in `chrome.storage.local`
 - Coordinate model selection requirements for first use
 - Validate `selectedModel` updates against the current model catalog before persistence
+- Treat explanation startup as the authoritative gate for in-page explanation attempts, including model validation and blocked setup outcomes
 - Maintain the active stream bridge for each page instance while requests are running
 - Route stream chunks and cancellations using both `requestId` and sender context
 - Fail active UI requests cleanly if the MV3 bridge is lost or the worker can no longer continue the stream
@@ -139,8 +147,13 @@ Responsibilities:
 - Show available models and the current selected model
 - Let the user update the selected model
 - Surface service-health and model-availability errors in a stable settings context
+- Load and save settings through the service worker's settings message flow rather than maintaining a separate storage-write path
 
 The options page is the long-lived settings surface. The in-page card may present a lightweight first-use picker only when the user is blocked from making an explanation request.
+
+The lightweight in-page picker is a blocked-flow escape hatch, not a second persistent settings surface. It should reuse the same `settings.setSelectedModel` validation and persistence path as the options page, and it must not write `chrome.storage.local` directly. Cached model data may be shown as a non-authoritative convenience hint, but explanation startup remains blocked until the validated model-selection write succeeds.
+
+For consistency, the options page should follow the same rule: it may render persisted settings state and cached model hints, but selected-model persistence must still go through `settings.setSelectedModel` so live validation remains authoritative.
 
 Model-selection update rule:
 
@@ -204,9 +217,9 @@ sequenceDiagram
     User->>ContentScript: Select short text
     ContentScript->>ContentScript: Validate selection and show trigger
     User->>ContentScript: Hover trigger
-    ContentScript->>ServiceWorker: Read selected model state
-    ServiceWorker-->>ContentScript: Model selected or selection required
-    ContentScript->>ServiceWorker: Start short explanation stream
+    ContentScript->>ContentScript: Open card from interaction snapshot
+    ContentScript->>ServiceWorker: Start short explanation flow
+    ServiceWorker->>ServiceWorker: Validate effective model and setup preconditions
     ServiceWorker->>LocalService: POST explanation request
     LocalService->>Ollama: Generate short explanation
     Ollama-->>LocalService: Stream text tokens
@@ -215,15 +228,21 @@ sequenceDiagram
     ContentScript-->>User: Render loading and streamed text
 ```
 
+For the in-page hover-triggered flow, `explanations.start` should be the authoritative startup path. The content script may use already-loaded model state only as a UI convenience hint, but it should not require a separate selected-model read as the authoritative gate before every explanation attempt.
+
 ### 6.2 Detailed Explanation Flow
 
 1. User clicks `查看更多`.
 2. Content script keeps the existing card open and expands the detail area.
-3. Content script allocates a dedicated detail-request state separate from the short-explanation request state.
-4. Content script sends a `detailed` mode request through the service worker.
-5. The service worker opens a second explanation stream for the same selected text and chosen model.
-6. The content script renders detail-area loading and streamed detail chunks.
-6. If the detailed request fails, the short explanation remains visible and only the detail area shows the error and retry action.
+3. Detailed explanation should start only after the short explanation for the same card has already produced visible streamed content, represented by at least one streamed chunk and a non-empty short-response buffer.
+4. Content script allocates a dedicated detail-request state separate from the short-explanation request state.
+5. Content script sends a `detailed` mode request through the service worker using the same card-scoped interaction snapshot and effective model.
+6. The service worker opens a second explanation stream for the same selected text and chosen model.
+7. The content script renders detail-area loading and streamed detail chunks.
+8. If the detailed request fails, the short explanation remains visible and only the detail area shows the error and retry action.
+9. Repeated detail triggers during an active detail request should be deduplicated rather than opening parallel detail streams.
+10. Detail retry should replace the affected detail-request state rather than creating an additional concurrent detail stream.
+11. If the short request never produced visible streamed content, including startup failure, pre-stream failure, or terminal `error` with an empty short buffer, detailed explanation should remain blocked.
 
 ### 6.3 Request Replacement and Cancellation
 
@@ -249,16 +268,28 @@ When the user closes the card:
 
 - Each active explanation interaction should be scoped by both `requestId` and sender context.
 - Sender context should include `tabId`, `frameId`, and a per-document `pageInstanceId`.
-- The service worker should maintain one active stream bridge per active page interaction.
+- The service worker should maintain stream delivery per active request, keyed by `requestId` plus sender context.
+- One page interaction may therefore hold both a short-request stream and a detailed-request stream at the same time when the user expands the existing card.
 - If the bridge closes unexpectedly, the affected request should move to a retryable failed state rather than remain pending indefinitely.
 - Cancellation requests must target the same scoped interaction identity used for stream delivery.
 - A page reload or same-tab navigation must generate a new `pageInstanceId`, so stale stream chunks cannot be delivered into a new document instance.
 
-### 6.6 Internal Event Delivery Contract
+### 6.6 Card Snapshot and Effective Model Ownership
+
+- Once the user successfully opens the card, the interaction should bind to a card-scoped snapshot of the accepted selection rather than depending on the continued presence of the browser's live selection highlight.
+- Loss of the browser-native selection highlight alone should not close the card.
+- The card should reset on explicit close, click-away, replacement by a new valid selection, or document-instance change.
+- Each open card should also hold one effective model snapshot once explanation startup has been established successfully for that card.
+- That effective model should be reused across short explanation, detailed explanation, and per-area retry within the same card by default.
+- Unrelated global selected-model changes should apply to newly created interactions, not silently mutate an already open card.
+- If the user explicitly resolves a model-selection-blocked state inside the same card, the card may update its effective model snapshot before the next explanation request starts.
+- For hover-triggered in-page attempts, the card may ask the service worker to start explanation before a usable model has been confirmed locally; the authoritative startup path is responsible for resolving the effective model or failing cleanly with `selected_model_unavailable`.
+
+### 6.7 Internal Event Delivery Contract
 
 - The worker-to-content-script stream bridge should use one explicit internal event envelope rather than ad hoc forwarded payloads.
 - The internal event contract should cover at least:
-  - stream start acknowledgement event
+  - forwarded stream `start` event after stream establishment
   - streamed text chunk delivery
   - successful completion
   - terminal stream error
@@ -271,7 +302,9 @@ When the user closes the card:
 
 ### 7.1 Page-Local State
 
-The content script should maintain ephemeral state keyed to the currently active selection:
+The content script should maintain ephemeral state keyed to the currently active selection.
+
+Exact field-level state definitions live in `docs/specs/extension-state-spec.md`. At the design level, the content script owns at least the following state areas:
 
 - `selectedText`
 - `selectionAnchorRect`
@@ -279,18 +312,12 @@ The content script should maintain ephemeral state keyed to the currently active
 - `detailExpanded`
 - `activeModel`
 - `senderContext`
-- `shortRequestState`
-  - `requestId`
-  - `phase`: `idle`, `starting`, `streaming`, `completed`, `error`, `cancelled`
-  - `textBuffer`
-  - `errorState`
-- `detailRequestState`
-  - `requestId`
-  - `phase`: `idle`, `starting`, `streaming`, `completed`, `error`, `cancelled`
-  - `textBuffer`
-  - `errorState`
+- `shortRequestState`: exact request-object shape is defined in the state spec and includes lifecycle phase, rendered buffer, normalized error state, effective model and mode, and request timestamps
+- `detailRequestState`: the same request-object shape is reused independently for the detailed explanation lifecycle
 
-This state must be reset when the selection becomes invalid, the user clicks away, or a new valid selection replaces the old one.
+At the design level, `selectedText`, `selectionAnchorRect`, and `activeModel` should represent the currently accepted card snapshot rather than a continuously live browser selection probe.
+
+This state must be reset when the user explicitly closes the card, clicks away, a new valid selection replaces the old one, or the document instance changes. Loss of the native selection highlight alone should not force a reset.
 
 The content script is also responsible for enforcing the PRD-level product rule that only `1-20` units of selected text should trigger explanation behavior. Requests outside that product limit should never be sent to the local service from normal UI flows.
 
@@ -311,13 +338,18 @@ Examples:
 
 ### 7.2 Persistent State
 
-Persistent extension state should live in `chrome.storage.local` and initially include:
+Persistent extension state should live in `chrome.storage.local`.
 
-- `selectedModel`
-- `lastKnownModels` as a non-authoritative convenience cache
+Exact storage keys live in `docs/specs/extension-state-spec.md`. The initial persistent settings model includes:
+
+- `settings.selectedModel`
+- `settings.lastKnownModels` as a non-authoritative convenience cache
+- `settings.lastModelRefreshAt` for diagnostics and stale-cache messaging only
 - lightweight local settings added later through the options page
 
 The selected text itself must never be persisted.
+
+If live model loading fails, the options page may still display `settings.lastKnownModels` together with `settings.lastModelRefreshAt` as stale diagnostics, but it must not treat that cache as sufficient to validate or persist a new selected model.
 
 ## 8. Error Handling Design
 
@@ -338,6 +370,12 @@ Expected UI behavior:
 - `selected_model_unavailable`: require a fresh model selection before continuing
 - `request_failed`: preserve already valid UI state where possible and offer retry for the affected area
 - `request_cancelled`: do not show a visible error if cancellation was caused by a user-driven context switch
+
+Blocked setup-state presentation rule:
+
+- For hover-triggered in-page explanation attempts, the card should remain the primary interaction surface for blocked setup outcomes.
+- The lightweight in-page picker should be limited to missing or invalid model-selection cases.
+- `no_models_available`, `service_unavailable`, and `local_service_conflict` should render as stable in-card blocked or error states with context-appropriate guidance rather than redirecting the user into a different primary interaction surface.
 
 Health and model state interpretation:
 
@@ -372,19 +410,23 @@ SnapInsight/
       worker/
       options/
       shared/
+    tests/
   server/
     app/
+      main.py
       api/
       services/
       adapters/
-      models/
+      schemas/
+      core/
+    tests/
 ```
 
-This structure is guidance for implementation and can be refined when code scaffolding begins, as long as the RFC boundaries remain intact.
+This structure is guidance for implementation and can be refined when code scaffolding begins, as long as the RFC boundaries remain intact. More detailed module layout guidance lives in `docs/design/repository-and-code-structure.md`.
 
-## 10. Interface Boundaries for Future Specs
+## 10. Design and Spec Boundaries
 
-The following items should be specified exactly in `docs/specs/api-spec.md`:
+The following items are specified exactly in `docs/specs/api-spec.md`:
 
 - `GET /health` request and response shape
 - `GET /v1/models` response schema
@@ -393,7 +435,14 @@ The following items should be specified exactly in `docs/specs/api-spec.md`:
 - machine-readable error codes and their meanings
 - internal extension message shapes between content script and service worker
 
-The spec should also make explicit:
+The following state structures are specified exactly in `docs/specs/extension-state-spec.md`:
+
+- page-local content-script state
+- short and detailed request-state shape
+- persistent storage keys and non-persistent data rules
+- request lifecycle transitions and reset behavior
+
+The specs make explicit:
 
 - the difference between product input limits and defensive backend validation limits
 - the difference between stream-setup HTTP failures and in-stream terminal error events
@@ -403,14 +452,19 @@ The spec should also make explicit:
 - the internal failure shape for bridge-loss setup or teardown failures
 - the explicit worker-to-content-script event envelope used during active explanation streams
 
-This design document intentionally fixes module ownership and flow behavior first, while leaving exact field-level schemas to the spec document.
+This design document intentionally fixes module ownership and flow behavior first, while leaving exact field-level schemas to the API and state specs.
 
 ## 11. Open Implementation Notes
 
 - Rich text editors and `iframe` content remain out of scope for v1 implementation.
-- Request timeouts are still an implementation detail and can be finalized in code or in the API spec if needed.
+- Hover-triggered explanation startup may use a short hover-intent threshold before beginning the actual explanation request, as long as the visible interaction still feels consistent with the PRD's hover-based flow.
+- Request-timeout thresholds are still an implementation detail, but the service worker should own timeout enforcement for extension-initiated local-service requests and should normalize timeout outcomes to retryable `request_failed` unless a narrower public contract is later added to the API spec.
 - Model-list caching is allowed only as a short-lived optimization and must not override the source of truth from Ollama.
-- `input` / `textarea` support remains in v1 scope, but detailed anchor-geometry strategy for these elements is deferred as a lower-priority follow-up design item.
+- The worker-to-content-script bridge and/or content-script render path may coalesce very small streamed chunks into fewer UI updates, as long as ordering, completion, and terminal error semantics remain unchanged and the user still perceives progressive streaming output.
+- `input` / `textarea` support remains in v1 scope.
+- When exact selection-range geometry is available for `input` / `textarea`, the trigger and card should use that geometry.
+- When exact range geometry is unavailable but the host element rectangle is stable, the implementation may fall back to anchoring against the element rectangle.
+- If no stable anchor can be computed, the implementation should fail closed by suppressing the floating trigger instead of guessing an unreliable position.
 
 ## 12. Residual Security Risk
 
@@ -421,3 +475,7 @@ This design document intentionally fixes module ownership and flow behavior firs
 ## 13. Change Record
 
 - Initial design created from the approved PRD and accepted RFC set.
+- Aligned design ownership language with the current API and extension-state specs, clarified per-request stream routing, and documented first-use picker and `input` / `textarea` fallback guidance.
+- Removed settings-path ambiguity for the options page, aligned the high-level repository structure with `docs/design/repository-and-code-structure.md`, and clarified stale-cache and timeout ownership guidance.
+- Clarified card snapshot lifetime, authoritative explanation startup, detail-request gating and deduplication, blocked setup-state presentation, card-scoped effective model ownership, hover-intent guidance, and streamed chunk coalescing allowances.
+- Consolidated the canonical startup flow around the accepted authoritative-startup RFC decision and aligned detail eligibility with the accepted visible-content rule from the interaction-lifecycle RFC.

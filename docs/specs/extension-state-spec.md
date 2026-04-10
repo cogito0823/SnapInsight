@@ -2,7 +2,7 @@
 
 ## Document Status
 
-- Status: Draft
+- Status: Approved
 - Related Documents:
   - `docs/prd/PRD-snapinsight.md`
   - `docs/design/extension-and-local-service-design.md`
@@ -187,14 +187,20 @@ stateDiagram-v2
 
 Field requirements:
 
-- `selectedText`: currently active trimmed selection text, or `null`
-- `selectionAnchorRect`: normalized viewport-relative anchor geometry, or `null`
+- `selectedText`: currently active trimmed selection text for the accepted card interaction snapshot, or `null`
+- `selectionAnchorRect`: normalized viewport-relative anchor geometry for the accepted card interaction snapshot, or `null`
 - `cardPhase`: current trigger or card visibility phase
 - `detailExpanded`: whether the card is showing the detailed section
-- `activeModel`: currently effective selected model id, or `null`
+- `activeModel`: currently effective model snapshot for the accepted card interaction, or `null`
 - `senderContext`: routing context bound to the current document instance
 - `shortRequestState`: request object for short explanation mode
 - `detailRequestState`: request object for detailed explanation mode
+
+Snapshot rules:
+
+- once the card is successfully opened, `selectedText` and `selectionAnchorRect` should represent the accepted interaction snapshot rather than a continuously live DOM selection probe
+- loss of the browser-native selection highlight alone must not clear the accepted card snapshot
+- `activeModel` should remain stable for one open card interaction unless the user explicitly resolves a model-selection-blocked state in that same card before the next request begins
 
 ### 5.2 Initialization Rules
 
@@ -204,15 +210,16 @@ When the content script loads for a document instance, it should initialize:
 - `cardPhase = hidden`
 - `detailExpanded = false`
 - `selectedText = null`
+- `activeModel = null`
 - empty request states in `idle`
 
 ### 5.3 Reset Rules
 
 The page-local state must reset when:
 
-- the current selection becomes invalid
 - a new valid selection replaces the old one
 - the user explicitly closes the card
+- the user clicks away from the card interaction
 - a navigation or reload creates a new document instance
 
 Reset means:
@@ -221,7 +228,12 @@ Reset means:
 - clear `selectionAnchorRect`
 - set `cardPhase = hidden`
 - set `detailExpanded = false`
+- clear `activeModel`
 - replace both request states with new idle objects
+
+Non-reset rule:
+
+- loss of the native browser selection highlight, without one of the reset conditions above, must not by itself reset the accepted card interaction
 
 ### 5.4 Replacement Rules
 
@@ -230,11 +242,17 @@ When the user triggers a new short explanation on a different selection:
 - the content script must cancel or abandon the old short request
 - the content script must also clear any stale detailed result that belongs to the old selection
 - a new `senderContext` is not required unless the document instance changed
+- the new accepted selection snapshot replaces the old `selectedText`, `selectionAnchorRect`, and `activeModel`
 
 When the user expands the same card for a detailed explanation:
 
-- the detailed request may start while the short result remains visible
+- the detailed request may start only after the short request for the same accepted interaction snapshot has already produced visible streamed content
+- the concrete eligibility predicate is: `shortRequestState.textBuffer` is non-empty because at least one streamed chunk has already been appended for the current card
 - `detailRequestState` must not mutate `shortRequestState`
+- repeated detail actions while `detailRequestState.phase` is `starting` or `streaming` must not create an additional parallel detail request
+- detail retry should replace the existing detail request state for that card rather than creating another concurrent detail request
+- if the short request ends in `error` after visible short content already exists, the detail request may still start for the same card
+- if the short request fails before any visible short content exists, including startup failure or terminal `error` with an empty short buffer, detail must remain blocked
 
 ## 6. Request Lifecycle Rules
 
@@ -247,6 +265,13 @@ On `explanations.start` acceptance:
 - `textBuffer` must be empty
 - `errorState` must be `null`
 
+Additional rules:
+
+- for hover-triggered short explanation, request start should be gated by the content script's accepted interaction snapshot rather than by continuous polling of live selection state
+- a separate selected-model read is not required as the authoritative prerequisite for entering `starting`; startup validation may instead be completed inside the accepted explanation-start path
+- for a short explanation attempt, `activeModel` may still be `null` when the startup request is issued; the authoritative startup path must either resolve a usable effective model before stream establishment or fail the request with normalized startup error state
+- if the targeted request is `detailRequestState`, the request must belong to the same accepted card snapshot and effective `activeModel` as the visible card interaction
+
 When the forwarded internal `start` event arrives:
 
 - the request state transitions to `streaming`
@@ -258,6 +283,7 @@ On each forwarded chunk event:
 - append chunk text to `textBuffer`
 - keep `phase = streaming`
 - refresh `updatedAt`
+- implementations may append coalesced text from multiple small upstream chunks, as long as text order is preserved
 
 ### 6.3 Completion
 
@@ -357,6 +383,7 @@ Rules:
 - the options page must load `settings.selectedModel` on startup
 - saving a new model selection must call `settings.setSelectedModel`
 - the options page must not write `settings.selectedModel` directly without the validation flow
+- global selected-model changes initiated outside the current page interaction must not silently mutate `activeModel` for an already open in-page card
 
 ## 9. Type Ownership Guidance
 
@@ -379,6 +406,7 @@ The following additions are expected to remain compatible with this v1 state sha
 - more lightweight settings in `chrome.storage.local`
 - richer options-page diagnostics
 - additional card presentation fields derived from existing request state
+- hover-intent timing refinements that do not change the PRD's hover-triggered interaction model
 
 The following would require a new design pass:
 

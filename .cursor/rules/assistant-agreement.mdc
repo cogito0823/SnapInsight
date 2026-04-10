@@ -54,6 +54,17 @@ Rules:
 - discovery documents should be split by major topic instead of growing into one large running note
 - when a discovery document becomes too broad, create a new topic-specific discovery document
 
+Preferred discovery format:
+- when a discovery document is used to explore questions or compare directions, prefer a question-driven structure instead of a freeform review note
+- each major discovery question should usually include:
+  - a question-style heading
+  - `Options`
+  - `Preliminary recommendation`
+  - `Reasoning`
+- prefer the format used in `docs/discovery/technical-architecture-questions.md` as the baseline template for new discovery documents
+- if a discovery note starts as rough notes, progressively rewrite it toward the question/options/recommendation/reasoning structure as the topic becomes clearer
+- use freeform discovery notes only when the topic is purely editorial or when a strict question-based structure would add unnecessary friction
+
 ### 3. Use `rfcs/` for option comparison and decisions
 
 Use `docs/rfcs/` when the topic requires a real decision.

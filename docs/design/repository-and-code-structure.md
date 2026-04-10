@@ -2,7 +2,7 @@
 
 ## Document Status
 
-- Status: Draft
+- Status: Approved
 - Related Documents:
   - `docs/rfcs/RFC-001-extension-architecture.md`
   - `docs/rfcs/RFC-002-local-communication-and-security.md`
@@ -107,20 +107,21 @@ flowchart LR
     end
 
     Content --> Shared
-    Content --> Worker
     Options --> Shared
-    Options --> Worker
     Worker --> Shared
+    Content -. message contracts .-> Worker
+    Options -. message contracts .-> Worker
 
     API --> Services
     API --> Schemas
     Services --> Adapters
-    Services --> Schemas
     Services --> Core
     Adapters --> Core
 
     Worker -. HTTP contract .-> API
 ```
+
+The dashed edges represent runtime communication boundaries, not source-level imports. `content/` and `options/` should talk to `worker/` through shared message contracts, not by importing worker implementation modules directly.
 
 ### 4.2 Module Responsibilities
 
@@ -144,7 +145,7 @@ Owns extension-global coordination.
 Recommended submodules:
 
 - `bootstrap/`: worker startup, message registration, alarm or lifecycle hooks if later needed
-- `handlers/`: message-type entrypoints such as `models.list`, `settings.get`, `settings.setSelectedModel`, `explanations.start`, and cancellation
+- `handlers/`: message-type entrypoints such as `models.list`, `settings.getSelectedModel`, `settings.setSelectedModel`, `explanations.start`, and cancellation
 - `bridge/`: long-lived stream delivery, sender-context routing, and bridge-loss handling
 - `settings/`: persistence reads and writes to `chrome.storage.local`
 - `local-api/`: HTTP client for `GET /health`, `GET /v1/models`, and streaming requests
@@ -168,9 +169,11 @@ Recommended submodules:
 
 - `contracts/`: internal message types and stream event envelopes
 - `errors/`: normalized error codes and mapping helpers
-- `state/`: shared state interfaces from `docs/specs/extension-state-spec.md`
+- `state/`: only serializable cross-runtime state types and request-shape interfaces that are intentionally reused across extension runtimes
 - `models/`: common model summary interfaces and helpers
 - `utils/`: narrow pure utilities that do not belong to a runtime-specific layer
+
+`src/shared/state/` should not become the default home for all extension state. Runtime-owned state containers and view-specific state transitions should stay inside their owning runtime modules such as `src/content/state/` and `src/options/state/`.
 
 ### 4.3 Placement Rules
 
@@ -178,6 +181,8 @@ Recommended submodules:
 - worker HTTP code must not import DOM-only modules
 - options-page code must reuse shared types but keep its own view logic
 - shared modules must remain free of DOM APIs and Chrome runtime side effects when practical
+- runtime-to-worker interaction should depend on `src/shared/contracts/` rather than direct imports from `src/worker/`
+- page-local card state defined in `docs/specs/extension-state-spec.md` should be implemented under `src/content/state/`; only intentionally shared type definitions belong under `src/shared/state/`
 
 ### 4.4 Suggested Entry Files
 
@@ -187,12 +192,13 @@ Initial scaffold can start with:
 extension/
   src/
     content/index.ts
+    content/state/card-state.ts
     worker/index.ts
     options/index.ts
     shared/contracts/messages.ts
     shared/contracts/events.ts
     shared/errors/error-codes.ts
-    shared/state/extension-state.ts
+    shared/state/request-types.ts
     shared/models/model-summary.ts
 ```
 
@@ -242,8 +248,9 @@ server/
 #### `app/services/`
 
 - holds request orchestration and business rules
-- enforces selected-model validation rules
+- validates explanation-request model availability and enforces explanation-flow business rules
 - owns stream setup and cancellation behavior
+- should return application-level results that `app/api/` can translate into HTTP responses or stream events, rather than owning transport-schema serialization
 
 #### `app/adapters/`
 
@@ -254,6 +261,7 @@ server/
 
 - contains request and response models aligned with `docs/specs/api-spec.md`
 - keeps schema naming explicit and transport-oriented
+- should remain an API-boundary concern; service-layer orchestration should not depend on transport DTOs unless a later document explicitly accepts that coupling
 
 #### `app/core/`
 
@@ -270,6 +278,8 @@ server/
 The following boundaries should remain explicit across the repo:
 
 - extension internal message contracts live in `extension/src/shared/contracts/`
+- extension runtime-owned state containers live in their owning runtime modules, especially `extension/src/content/state/` for page-local interaction state
+- extension shared state definitions, when needed, live in `extension/src/shared/state/` and should stay limited to reusable serializable interfaces rather than owning runtime-local state logic
 - local HTTP schemas live in `server/app/schemas/`
 - normalization logic for product-level error codes must be consistent with `docs/specs/api-spec.md`
 
@@ -281,6 +291,7 @@ Recommended test placement:
 
 - extension pure utilities and state transitions -> `extension/tests/unit/`
 - extension runtime interaction tests -> `extension/tests/integration/`
+- extension internal message-contract and stream-envelope compatibility tests -> `extension/tests/integration/`
 - server service logic -> `server/tests/unit/`
 - local API contract and streaming tests -> `server/tests/integration/`
 
@@ -288,6 +299,7 @@ Rules:
 
 - tests should follow runtime boundaries rather than becoming a single mixed test tree
 - contract examples from `docs/specs/api-spec.md` should be reusable as fixtures where practical
+- extension integration coverage should explicitly verify that `src/shared/contracts/` remains consistent with worker/content-script message handling and stream event forwarding rules
 
 ## 8. Naming and Dependency Rules
 
@@ -315,3 +327,8 @@ The following changes may justify a new structure review:
 ## 10. Change Record
 
 - Initial repository and module-structure design created to bridge the gap between high-level architecture docs and upcoming code scaffolding.
+- Clarified extension communication boundaries so dependency diagrams do not imply direct imports across runtimes, aligned worker handler naming with the approved internal message contract, and narrowed `src/shared/state/` to reusable cross-runtime types instead of runtime-local state ownership.
+- Aligned the suggested entry-file examples with the runtime-owned state boundaries and clarified that server services validate explanation-request model availability rather than owning extension-side selected-model persistence semantics.
+- Promoted the document to `In Review` after resolving the remaining boundary and consistency issues identified in the maturity review.
+- Clarified that server services should not depend on transport-oriented API schemas by default and strengthened testing guidance for extension internal message contracts and stream event envelopes.
+- Promoted the document to `Approved` after final review confirmed alignment with the accepted architecture, API contract, state model, and implementation-boundary guidance.

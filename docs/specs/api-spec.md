@@ -2,7 +2,7 @@
 
 ## Document Status
 
-- Status: Draft
+- Status: Approved
 - Related Documents:
   - `docs/prd/PRD-snapinsight.md`
   - `docs/rfcs/RFC-002-local-communication-and-security.md`
@@ -333,6 +333,7 @@ Rules:
 - `delta` contains the next text fragment to append
 - chunks must arrive in display order
 - the client should append `delta` as received without waiting for stream completion
+- internal worker-to-content-script delivery may coalesce multiple small upstream chunks into fewer chunk messages, as long as ordered progressive rendering remains possible and terminal-event semantics are unchanged
 
 ### 6.3 `complete` Event
 
@@ -519,6 +520,12 @@ If no model is selected yet:
 }
 ```
 
+Rules:
+
+- `settings.getSelectedModel` is a read-only convenience contract for settings rendering and blocked-setup hints
+- the in-page hover-triggered explanation flow does not need `settings.getSelectedModel` to succeed before it is allowed to call `explanations.start`
+- authoritative startup validation for an explanation attempt may be completed inside `explanations.start`
+
 ### 8.4 Update Selected Model
 
 Request:
@@ -612,6 +619,24 @@ Request:
       "pageInstanceId": "doc-7f6d6b2d"
     },
     "text": "Transformer",
+    "mode": "short"
+  }
+}
+```
+
+Alternative request with explicit model override:
+
+```json
+{
+  "type": "explanations.start",
+  "payload": {
+    "requestId": "9e86d5ac-35a7-4a59-8d57-8db1f71db9f6",
+    "senderContext": {
+      "tabId": 123,
+      "frameId": 0,
+      "pageInstanceId": "doc-7f6d6b2d"
+    },
+    "text": "Transformer",
     "model": "llama3.1:8b",
     "mode": "short"
   }
@@ -633,6 +658,9 @@ Rules:
 
 - a successful `explanations.start` response only confirms that the extension bridge and startup request were accepted
 - the actual stream lifecycle begins when the forwarded internal `start` event is emitted
+- `payload.model` is optional in the extension-internal contract
+- if `payload.model` is omitted, the service worker must resolve the effective model from current persisted extension settings before stream establishment
+- if `payload.model` is present, the service worker must validate it as an explicit model override before stream establishment
 
 If setup fails before the stream starts:
 
@@ -643,6 +671,19 @@ If setup fails before the stream starts:
     "code": "request_failed",
     "message": "Explanation stream could not be started.",
     "retryable": true
+  }
+}
+```
+
+If setup fails because no usable selected model currently exists:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "selected_model_unavailable",
+    "message": "A valid model must be selected before explanation can start.",
+    "retryable": false
   }
 }
 ```
@@ -666,7 +707,7 @@ Setup-time failure mapping:
 |------|---------|
 | Local service transport failure | `service_unavailable` |
 | Wrong-service identity on fixed port | `local_service_conflict` |
-| Selected model unavailable or rejected at startup | `selected_model_unavailable` |
+| No usable selected model exists, or selected model is unavailable or rejected at startup | `selected_model_unavailable` |
 | Other startup or dependency failure | `request_failed` |
 
 Streaming delivery rule:
@@ -677,6 +718,8 @@ Streaming delivery rule:
 - the bridge carrying stream events must remain active for the lifetime of the request
 - if the MV3 bridge is lost unexpectedly, the service worker or content script must transition the affected request to a retryable failure state
 - unexpected bridge loss after stream acceptance must be normalized to `request_failed` with `retryable: true`
+- for in-page explanation attempts, `explanations.start` serves as the single authoritative startup path even when the UI already has cached or previously loaded selected-model state
+- the extension should not require a separately successful `settings.getSelectedModel` call before issuing `explanations.start`
 
 ### 8.6 Stream Event Forwarding
 
