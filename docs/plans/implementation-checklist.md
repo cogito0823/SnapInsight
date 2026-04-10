@@ -44,15 +44,15 @@ This document should be updated during implementation rather than treated as a s
 
 ### Batch 2: Local Service Foundation
 
-- [ ] Stand up the FastAPI app on `127.0.0.1:11435`
-- [ ] Implement `GET /health`
-- [ ] Implement `GET /v1/models`
-- [ ] Implement origin validation support
-- [ ] Establish the Ollama adapter boundary
-- [ ] Verify `GET /health` returns the expected service identity
-- [ ] Verify `GET /v1/models` distinguishes ready and no-models conditions
-- [ ] Perform phase alignment review for the server baseline
-- [ ] Update `docs/plans/project-progress.md`
+- [x] Stand up the FastAPI app on `127.0.0.1:11435`
+- [x] Implement `GET /health`
+- [x] Implement `GET /v1/models`
+- [x] Implement origin validation support
+- [x] Establish the Ollama adapter boundary
+- [x] Verify `GET /health` returns the expected service identity
+- [x] Verify `GET /v1/models` distinguishes ready and no-models conditions
+- [x] Perform phase alignment review for the server baseline
+- [x] Update `docs/plans/project-progress.md`
 
 ### Batch 3: Worker HTTP and Validated Persistence
 

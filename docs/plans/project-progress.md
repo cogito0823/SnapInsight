@@ -25,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: `Batch 1` completed
-- Current execution point: scaffold and shared-boundary work is complete; `Batch 2` has not started
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, and shared runtime contracts are now in place
+- Current overall status: `Batch 2` completed
+- Current execution point: `Batch 2: Local Service Foundation` is complete; `Batch 3` is next
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, and the local-service baseline for health and model-list handling are now in place
 
 ## 3. Completed
 
@@ -74,6 +74,15 @@ This document should be updated as implementation progresses. It complements `do
 - Completed: established extension build tooling with Vite and TypeScript and server packaging baseline with FastAPI dependencies
 - Completed: added a project-wide Cursor rule requiring a repository-local `.venv` and activation before every Python command
 
+### 3.6 Batch 2 Local Service Foundation
+
+- Completed: added server configuration with explicit trusted extension identity resolution and fixed localhost host or port settings
+- Completed: added centralized core error primitives, logging setup, and origin-validation support for later streaming-route enforcement
+- Completed: implemented the Ollama adapter boundary for reachability checks and model catalog loading
+- Completed: implemented `GET /health` with fixed service identity, contract version, and `ollamaReachable`
+- Completed: implemented `GET /v1/models` with normalized `ready` and `no_models_available` states plus retryable failure mapping
+- Completed: added focused server tests covering health identity, model-list normalization, upstream-failure mapping, and origin-validation configuration rules
+
 ## 4. In Progress
 
 - None currently recorded
@@ -82,14 +91,14 @@ This document should be updated as implementation progresses. It complements `do
 
 ### Immediate Next Actions
 
-- Pause at the end of `Batch 1` until the next implementation instruction is confirmed
-- Keep `Batch 2: Local Service Foundation` as the next planned phase, but do not begin it yet
-- Use the current scaffold and contract boundary as the baseline for the next coding pass
+- Begin `Batch 3: Worker HTTP and Validated Persistence`
+- Reuse the completed local-service baseline as the worker's only localhost dependency
+- Implement worker health, models, and selected-model validation flows against the established server contract
 
 ### First Coding Targets
 
-- Next target when implementation resumes: `Batch 2: Local Service Foundation`
-- Planned focus: FastAPI app baseline, `GET /health`, `GET /v1/models`, origin validation, and Ollama adapter boundary
+- Next target: `Batch 3: Worker HTTP and Validated Persistence`
+- Planned focus: worker local-API clients, `health.check`, `models.list`, `settings.getSelectedModel`, and validated selected-model persistence
 
 ## 6. Current Batch Tracking
 
@@ -128,8 +137,15 @@ Review note:
 
 ### Batch 2: Local Service Foundation
 
-- Status: Not started
+- Status: Completed
 - Goal: make the local service reachable and contract-shaped before UI integration
+
+Review note:
+
+- Implemented the FastAPI app factory with fixed localhost runtime settings, explicit trusted-extension configuration, and a CORS baseline derived from the configured trusted origin
+- Added a centralized Ollama adapter plus service-layer normalization so `GET /health` and `GET /v1/models` stay aligned with the approved API contract instead of leaking upstream payloads
+- Verified the batch with server unit/integration tests, a route-construction smoke check, and lint inspection for the edited server files
+- Alignment result: current server baseline matches the approved repository structure, server implementation design, and API-spec behavior required for `Batch 2`
 
 ### Batch 3: Worker HTTP and Validated Persistence
 
