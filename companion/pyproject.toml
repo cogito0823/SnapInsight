@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "snapinsight-companion"
+version = "0.1.0"
+description = "SnapInsight local companion app."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "httpx",
+  "pydantic-settings",
+  "rumps",
+  "sniffio",
+  "uvicorn[standard]"
+]
+
+[project.optional-dependencies]
+build = [
+  "py2app"
+]
+
+[project.scripts]
+snapinsight-companion = "snapinsight_companion.main:run"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]

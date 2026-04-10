@@ -2,6 +2,8 @@
 
 SnapInsight is a Chrome extension that provides instant, layered explanations for selected text through a lightweight in-page hover interaction. All explanation requests stay on the local machine through a FastAPI service that calls Ollama.
 
+The repository now also includes a macOS companion-app MVP that can manage the existing local API for a more productized local-first startup flow.
+
 ## What It Looks Like
 
 ![SnapInsight in-page card example](docs/assets/readme-in-page-card-example.png)
@@ -49,6 +51,14 @@ ollama serve
 ollama pull llama3.1:8b
 ```
 
+### 4. Optional: install the companion app MVP in the local venv
+
+```bash
+cd /path/to/SnapInsight
+source .venv/bin/activate
+pip install -e ./companion
+```
+
 ## Build And Load The Extension
 
 ### 1. Build the extension bundle
@@ -80,6 +90,59 @@ SNAPINSIGHT_TRUSTED_EXTENSION_ID=<your-extension-id> python -m uvicorn app.main:
 
 You can also provide `SNAPINSIGHT_TRUSTED_EXTENSION_ORIGIN=chrome-extension://<your-extension-id>` instead of the ID-only variable.
 
+## Run The Companion App MVP
+
+The current MVP is macOS-only and manages the existing local API as a subprocess. It still expects Ollama to be installed separately.
+
+1. Create the local companion config file at `~/Library/Application Support/SnapInsight/companion-config.json`
+2. Add your unpacked extension id:
+
+```json
+{
+  "trusted_extension_id": "<your-extension-id>",
+  "auto_start_service": true,
+  "launch_at_login": false
+}
+```
+
+3. Launch the companion app from the repository environment:
+
+```bash
+cd /path/to/SnapInsight
+source .venv/bin/activate
+python -m snapinsight_companion
+```
+
+Useful development command:
+
+```bash
+cd /path/to/SnapInsight
+source .venv/bin/activate
+python -m snapinsight_companion --status-once
+```
+
+What the MVP currently does:
+
+- starts and stops the existing local API
+- checks whether the local API is healthy
+- checks whether Ollama is reachable
+- shows model-catalog readiness
+- opens the local config and logs location
+- shows an `SI` menu-bar title to match the extension trigger
+- persists menu toggles for local-API auto-start and Launch at Login
+- can register or unregister a macOS login item when running from the packaged app
+
+### Build A macOS `.app`
+
+```bash
+cd /path/to/SnapInsight
+source .venv/bin/activate
+pip install -e "./companion[build]"
+python companion/scripts/build_macos_app.py
+```
+
+The build currently outputs `companion/dist/SnapInsight.app` and stages the current `server/app` sources into the packaged app resources.
+
 ## First-Run Flow
 
 When no model has been saved yet:
@@ -102,6 +165,15 @@ When no model has been saved yet:
 8. While the detailed explanation is still streaming, scroll inside the card and confirm the scrolling remains usable.
 9. Click the detail-section regenerate icon and confirm the detailed explanation can be regenerated.
 10. Open the extension options page and confirm model selection loads and saves successfully.
+
+## Companion App MVP Verification
+
+1. Set `trusted_extension_id` in `~/Library/Application Support/SnapInsight/companion-config.json`.
+2. Launch `python -m snapinsight_companion --status-once` and confirm it reports local status instead of crashing.
+3. Launch `python -m snapinsight_companion` on macOS.
+4. Confirm the menu-bar app can start the local API.
+5. Confirm the menu-bar app shows Ollama reachability and model-catalog state.
+6. Stop the local API from the menu-bar app and confirm the API becomes unavailable.
 
 ## Development Commands
 

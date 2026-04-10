@@ -1,0 +1,1 @@
+"""SnapInsight local companion app."""

@@ -8,11 +8,13 @@
   - `docs/rfcs/RFC-001-extension-architecture.md`
   - `docs/rfcs/RFC-002-local-communication-and-security.md`
   - `docs/rfcs/RFC-003-python-service-and-ollama-integration.md`
+  - `docs/rfcs/RFC-006-local-companion-app-architecture.md`
   - `docs/design/repository-and-code-structure.md`
   - `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
   - `docs/design/implementation-design/options-page-and-settings-surface-implementation-design.md`
   - `docs/design/implementation-design/content-script-interaction-implementation-design.md`
   - `docs/design/implementation-design/server-streaming-and-orchestration-implementation-design.md`
+  - `docs/design/implementation-design/companion-app-mvp-implementation-design.md`
   - `docs/specs/api-spec.md`
   - `docs/specs/extension-state-spec.md`
 
@@ -36,7 +38,7 @@ It does not reopen architectural choices already settled in the RFCs. Instead, i
 - Cross-browser support beyond Chrome v1
 - Remote model providers
 - Query history or result persistence
-- Automatic bootstrap of the Python service
+- Replacing Ollama with a different local runtime in the same milestone
 - Complex multi-card or sidebar interaction models
 
 ## 4. System Overview
@@ -49,9 +51,13 @@ flowchart LR
     localApi --> ollama[LocalOllama]
     serviceWorker --> storage[ChromeStorageLocal]
     optionsPage[OptionsPage] --> serviceWorker
+    companion[CompanionApp] --> localApi
+    companion --> ollama
 ```
 
 The options page should use service-worker-backed settings flows rather than owning a separate direct-write path to `chrome.storage.local`.
+
+For the local-productization MVP, a companion app may manage the lifecycle of the existing local Python service and expose lightweight local status, while the extension-to-local API contract remains unchanged.
 
 ### 4.1 Runtime Request Sequence
 
