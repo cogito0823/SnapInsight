@@ -6,6 +6,7 @@
 - Related Documents:
   - `docs/plans/implementation-plan.md`
   - `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
+  - `docs/design/implementation-design/options-page-and-settings-surface-implementation-design.md`
   - `docs/design/implementation-design/content-script-interaction-implementation-design.md`
   - `docs/design/implementation-design/server-streaming-and-orchestration-implementation-design.md`
 
@@ -24,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: Pre-implementation documentation ready
-- Current execution point: Ready to begin `Batch 0` and then `Batch 1`
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place; code implementation status has not yet been recorded as started
+- Current overall status: Pre-implementation documentation approved
+- Current execution point: the implementation-level design package is approved and the project is ready to begin `Batch 1`
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; no scaffold-blocking contradiction is currently recorded
 
 ## 3. Completed
 
@@ -46,8 +47,24 @@ This document should be updated as implementation progresses. It complements `do
 
 - Completed: execution-oriented implementation plan is available
 - Completed: worker, settings, and local API implementation-level design is available
+- Completed: options-page settings-surface implementation-level design is available
 - Completed: content-script interaction implementation-level design is available
 - Completed: server streaming and orchestration implementation-level design is available
+- Completed: the implementation-level design set is aligned with the explicit Phase 5 options-page workstream in the implementation plan
+- Completed: the implementation-level design set is marked as ready for project-owner approval review
+
+### 3.4 Batch Review Evidence
+
+- Completed: `Batch 0` contract-readiness review note recorded
+- Completed: worker `models.list` no-models success semantics were aligned with `docs/specs/api-spec.md`
+- Completed: same-card effective-model reuse requirements were made explicit across implementation design and state/API contract documents
+- Completed: repository-structure guidance was aligned with documented worker `health.check` handling and server origin-validation and stream-schema module placement
+- Completed: the request-lifecycle diagram in `docs/specs/extension-state-spec.md` now shows startup rejection before acceptance explicitly
+- Completed: formal review findings for the implementation-level design package were resolved and the follow-up formal re-review found no remaining substantive findings
+- Completed: final formal review found no substantive findings and recommended approval pending project-owner sign-off
+- Completed: follow-up implementation-design gap review added a dedicated options-page implementation design and backfilled privacy/logging and origin-validation configuration guidance where it had been missing
+- Completed: a final pre-approval review checklist was added so the project owner can perform one explicit approval pass before implementation begins
+- Completed: the project owner approved the implementation-level design package and it now serves as the execution baseline for `Batch 1` and later phases
 
 ## 4. In Progress
 
@@ -57,9 +74,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ### Immediate Next Actions
 
-- Start `Batch 0: Contract Readiness`
 - Confirm current repository baseline against the implementation plan
-- Start `Batch 1: Scaffold and Shared Boundary` after the batch-0 review note is recorded
+- Start `Batch 1: Scaffold and Shared Boundary`
+- Begin scaffold planning against the approved repository structure and implementation-level design package
 
 ### First Coding Targets
 
@@ -71,11 +88,19 @@ This document should be updated as implementation progresses. It complements `do
 
 ### Batch 0: Contract Readiness
 
-- Status: Not started
+- Status: Completed
 - Goal: confirm no blocking contradiction remains across PRD, design, and specs
 - Completion signal:
   - short review note exists
   - no blocking contradiction remains for scaffold work
+
+Review note:
+
+- Completed a document-alignment review across PRD, high-level design, repository structure, API spec, state spec, and the implementation-level design set available at that time
+- Corrected the `models.list` no-models success-vs-error distinction so worker guidance now matches the approved API contract
+- Corrected same-card effective-model reuse guidance so detail and retry flows explicitly reuse the card-scoped `activeModel` rather than silently re-resolving from later global settings changes
+- Aligned repository-structure guidance with the approved `health.check` handler and server-side origin-validation and stream-event-schema placement
+- Result: no blocking contradiction remains for `Batch 1` scaffold work
 
 ### Batch 1: Scaffold and Shared Boundary
 
@@ -161,3 +186,13 @@ Avoid vague entries such as:
 ## 9. Change Log
 
 - Initial project progress document created. Current state recorded as documentation-ready with implementation batches not yet started.
+- Recorded completion of `Batch 0` contract-readiness review and the associated document-alignment fixes for worker model-list semantics, same-card effective-model reuse, and repository-structure placement guidance.
+- Recorded the follow-up document hardening pass that moved the implementation-level design documents to `In Review` and clarified the state-spec lifecycle diagram for pre-acceptance startup rejection.
+- Recorded the start of formal review for the implementation-level design package and linked the review findings document.
+- Recorded resolution of the formal review findings and the follow-up formal re-review outcome of no remaining substantive findings.
+- Updated `Next Up` to reflect that `Batch 0` is complete and `Batch 1` is now the immediate next step.
+- Recorded that the implementation-level design set and formal review package are now ready for project-owner approval review.
+- Recorded the final formal review outcome of no substantive findings and a recommendation to approve pending project-owner sign-off.
+- Recorded the follow-up implementation-design coverage pass that added the options-page implementation design and filled the missing privacy/logging and origin-validation configuration guidance.
+- Recorded that a final pre-approval review checklist was added and that project-owner sign-off is now the immediate gate before `Batch 1`.
+- Recorded project-owner sign-off completion and updated the project state so the approved implementation-level design package is now the baseline for starting `Batch 1`.

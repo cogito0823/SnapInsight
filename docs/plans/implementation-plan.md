@@ -50,6 +50,7 @@ When an implementation area already has a dedicated implementation-level design 
 The current implementation-level design mapping is:
 
 - worker, settings, and local API work -> `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
+- options-page settings-surface work -> `docs/design/implementation-design/options-page-and-settings-surface-implementation-design.md`
 - content-script interaction work -> `docs/design/implementation-design/content-script-interaction-implementation-design.md`
 - local Python service streaming and orchestration work -> `docs/design/implementation-design/server-streaming-and-orchestration-implementation-design.md`
 
@@ -330,6 +331,8 @@ Required references:
 
 - `docs/prd/PRD-snapinsight.md`
 - `docs/design/extension-and-local-service-design.md`
+- `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
+- `docs/design/implementation-design/options-page-and-settings-surface-implementation-design.md`
 - `docs/specs/extension-state-spec.md`
 - `docs/design/implementation-design/content-script-interaction-implementation-design.md`
 - `docs/specs/api-spec.md`
@@ -532,6 +535,7 @@ Required references:
 - `docs/design/extension-and-local-service-design.md`
 - `docs/design/repository-and-code-structure.md`
 - `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
+- `docs/design/implementation-design/options-page-and-settings-surface-implementation-design.md`
 - `docs/design/implementation-design/content-script-interaction-implementation-design.md`
 - `docs/design/implementation-design/server-streaming-and-orchestration-implementation-design.md`
 - `docs/specs/api-spec.md`

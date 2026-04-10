@@ -9,6 +9,7 @@
   - `docs/rfcs/RFC-003-python-service-and-ollama-integration.md`
   - `docs/design/extension-and-local-service-design.md`
   - `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
+  - `docs/design/implementation-design/options-page-and-settings-surface-implementation-design.md`
   - `docs/design/implementation-design/content-script-interaction-implementation-design.md`
   - `docs/design/implementation-design/server-streaming-and-orchestration-implementation-design.md`
   - `docs/specs/api-spec.md`
@@ -148,7 +149,7 @@ Owns extension-global coordination.
 Recommended submodules:
 
 - `bootstrap/`: worker startup, message registration, alarm or lifecycle hooks if later needed
-- `handlers/`: message-type entrypoints such as `models.list`, `settings.getSelectedModel`, `settings.setSelectedModel`, `explanations.start`, and cancellation
+- `handlers/`: message-type entrypoints such as `health.check`, `models.list`, `settings.getSelectedModel`, `settings.setSelectedModel`, `explanations.start`, and cancellation
 - `bridge/`: long-lived stream delivery, sender-context routing, and bridge-loss handling
 - `settings/`: persistence reads and writes to `chrome.storage.local`
 - `local-api/`: HTTP client for `GET /health`, `GET /v1/models`, and streaming requests
@@ -231,10 +232,12 @@ server/
       model_schema.py
       explanation_schema.py
       error_schema.py
+      stream_event_schema.py
     core/
       config.py
       errors.py
       logging.py
+      origin_validation.py
   tests/
     unit/
     integration/
@@ -269,6 +272,7 @@ server/
 #### `app/core/`
 
 - contains local service configuration and cross-cutting infrastructure helpers
+- should include centralized origin validation helpers used by the API layer
 
 ### 5.3 Placement Rules
 
@@ -335,3 +339,4 @@ The following changes may justify a new structure review:
 - Promoted the document to `In Review` after resolving the remaining boundary and consistency issues identified in the maturity review.
 - Clarified that server services should not depend on transport-oriented API schemas by default and strengthened testing guidance for extension internal message contracts and stream event envelopes.
 - Promoted the document to `Approved` after final review confirmed alignment with the accepted architecture, API contract, state model, and implementation-boundary guidance.
+- Added the approved `health.check` worker handler example and aligned server module placement guidance with centralized origin validation and stream-event schema files used by the implementation-level server design.

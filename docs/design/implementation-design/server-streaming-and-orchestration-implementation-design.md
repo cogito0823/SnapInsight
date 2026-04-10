@@ -2,11 +2,13 @@
 
 ## Document Status
 
-- Status: Draft
+- Status: Approved
+- Project-Owner Sign-Off: Completed
 - Related Documents:
   - `docs/design/extension-and-local-service-design.md`
   - `docs/design/repository-and-code-structure.md`
   - `docs/specs/api-spec.md`
+  - `docs/specs/extension-state-spec.md`
   - `docs/plans/implementation-plan.md`
 
 ## 1. Purpose
@@ -280,9 +282,15 @@ Recommended failure mapping before stream start:
 
 - invalid payload -> `400` with `invalid_request`
 - origin not allowed -> `403`
+- no selectable model exists for explanation startup -> `409` with `selected_model_unavailable`
 - selected model unavailable -> `409` with `selected_model_unavailable`
 - required upstream dependency unavailable -> `503` with `request_failed`
 - unexpected startup failure -> `500` with `request_failed`
+
+Startup interpretation rule:
+
+- for `POST /v1/explanations/stream`, "no selectable model exists at all" and "the requested or previously selected model is stale" should converge to the same public startup outcome: `409` with `selected_model_unavailable`
+- this differs from `GET /v1/models`, where an empty catalog remains a valid `200` response with `state: "no_models_available"`
 
 ### 8.2 Prompt Construction
 
@@ -346,6 +354,7 @@ Recommended public mapping:
 | --- | --- |
 | invalid request | `400` + `invalid_request` |
 | origin not allowed | `403` |
+| no selectable model exists before explanation stream | `409` + `selected_model_unavailable` |
 | selected model unavailable before stream | `409` + `selected_model_unavailable` |
 | no models available during model-list request | `200` + `state: "no_models_available"` |
 | upstream unavailable during model-list request | `503` + `request_failed` |
@@ -357,6 +366,17 @@ Rules:
 
 - raw stack traces must never become public `message`
 - more internal errors may exist, but they must map into the documented public contract
+
+### 9.1 Privacy and Logging Guidance
+
+The server implementation should carry forward the approved privacy and logging rules from `docs/specs/api-spec.md`.
+
+Rules:
+
+- selected text and generated explanation output must not be written to normal operational logs
+- request logging should avoid storing raw explanation payload bodies by default
+- error logs may capture normalized categories and operational context, but should avoid raw selected text, generated output, or upstream bodies unless an explicitly opt-in debug mode is enabled
+- temporary debug logging, if enabled during development, should be opt-in and disabled by default
 
 ## 10. Default Implementation Decisions
 
@@ -377,6 +397,17 @@ Rules:
 - the service must only trust allowed `chrome-extension://<extension-id>` origins
 - origin rejection for explanation streaming should happen before stream establishment
 - origin validation should not be reimplemented separately in each route
+
+### 11.1 Configuration Source
+
+The trusted extension origin should come from server configuration loaded through `core/config.py`.
+
+Recommended rule:
+
+- prefer one explicit configured value that represents the allowed extension identity for the current environment, either as the full trusted origin or as an extension id that `origin_validation.py` converts into `chrome-extension://<extension-id>`
+- application startup should fail closed if the trusted extension identity is missing, malformed, or incompatible with the origin-validation helper
+- route handlers should consume the centralized validated configuration rather than reconstructing allowlist values ad hoc
+- the exact packaging or build mechanism that keeps the extension id stable may remain an implementation detail, but the server-side trust decision must still come from explicit configuration rather than an undocumented constant
 
 ## 12. Streaming Implementation Notes
 
@@ -469,3 +500,8 @@ The following topics should be covered elsewhere:
 
 - Initial implementation-level design for the local Python service streaming and orchestration area.
 - Clarified the v1 disconnect-driven cancellation default and recorded default server implementation decisions for route, schema, prompt, and NDJSON responsibilities.
+- Promoted the document to `In Review` after the contract-alignment pass found no remaining substantive conflicts with the approved design and spec documents.
+- Clarified the startup mapping for "no selectable model exists" versus "selected model unavailable" and added the extension-state spec to the related-document set for cross-runtime review traceability.
+- Marked the document as ready for project-owner approval review after the formal review and follow-up re-review found no remaining substantive findings.
+- Added explicit server-side privacy/logging guidance and origin-validation configuration-source guidance so implementation can fail closed without re-deriving trust rules during coding.
+- Marked the document `Approved` after project-owner sign-off confirmed it as the execution baseline for server implementation.

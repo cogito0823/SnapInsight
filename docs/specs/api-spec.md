@@ -462,6 +462,18 @@ Response:
 }
 ```
 
+If no model is available:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "state": "no_models_available",
+    "models": []
+  }
+}
+```
+
 If Ollama cannot be queried:
 
 ```json
@@ -659,10 +671,25 @@ Rules:
 - a successful `explanations.start` response only confirms that the extension bridge and startup request were accepted
 - the actual stream lifecycle begins when the forwarded internal `start` event is emitted
 - `payload.model` is optional in the extension-internal contract
-- if `payload.model` is omitted, the service worker must resolve the effective model from current persisted extension settings before stream establishment
+- if `payload.model` is omitted, the service worker must resolve the effective model from current persisted extension settings before stream establishment rather than trying to infer card-local UI state that it does not own
 - if `payload.model` is present, the service worker must validate it as an explicit model override before stream establishment
+- once an open card interaction already has an established effective model, same-card detail requests and same-card retries should pass that model explicitly in `payload.model` so the card-scoped model snapshot is reused instead of being silently replaced by later global settings changes
+- the worker-side omission rule does not relax the content-script obligation above; same-card model stability depends on the content script passing `payload.model` once the card already has an established `activeModel`
 
-If setup fails before the stream starts:
+If setup fails because the local service cannot be reached before the stream starts:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "service_unavailable",
+    "message": "The local service could not be reached.",
+    "retryable": true
+  }
+}
+```
+
+If setup fails for another retryable startup or dependency reason before the stream starts:
 
 ```json
 {
@@ -706,6 +733,7 @@ Setup-time failure mapping:
 | Detected condition | Internal error code |
 |------|---------|
 | Local service transport failure | `service_unavailable` |
+| Origin rejected before stream establishment | `request_failed` |
 | Wrong-service identity on fixed port | `local_service_conflict` |
 | No usable selected model exists, or selected model is unavailable or rejected at startup | `selected_model_unavailable` |
 | Other startup or dependency failure | `request_failed` |
@@ -924,3 +952,5 @@ Rules:
 - Clarified stream failure boundaries, product-vs-defensive input limits, and model-list failure semantics.
 - Added sender-context routing, MV3 bridge failure behavior, mixed-language selection counting, and fixed-port service identity validation.
 - Added `local_service_conflict`, per-document `pageInstanceId`, and explicit internal failure shapes for health-check and stream-setup edge cases.
+- Added the internal `models.list` success example for `no_models_available` and made same-card effective-model reuse explicit for detail and retry explanation-start requests.
+- Clarified that omitted `payload.model` resolution must not depend on hidden worker knowledge of card-local state and pinned origin rejection before stream establishment to extension-facing `request_failed`.

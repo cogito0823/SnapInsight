@@ -2,7 +2,8 @@
 
 ## Document Status
 
-- Status: Draft
+- Status: Approved
+- Project-Owner Sign-Off: Completed
 - Related Documents:
   - `docs/design/extension-and-local-service-design.md`
   - `docs/design/repository-and-code-structure.md`
@@ -267,6 +268,10 @@ Implementation notes:
 
 - cache refresh should happen only on successful live responses
 - cached data is diagnostic only and must not become the source of truth for model validation
+- `models.list` must preserve the success-shape distinction from `docs/specs/api-spec.md`:
+  - `ok: true` with `data.state = "ready"` when models are available
+  - `ok: true` with `data.state = "no_models_available"` when the catalog is empty
+  - `ok: false` only for normalized transport, identity, or retryable failure cases
 
 ### 7.3 `settings.getSelectedModel`
 
@@ -332,6 +337,12 @@ Failure boundary:
 - pre-stream HTTP failure becomes a normalized startup failure result
 - post-start failure becomes forwarded terminal `error`
 
+Same-card effective-model rule:
+
+- if `payload.model` is present, the worker must treat it as the card-scoped effective-model snapshot for that request and validate it as an explicit override before stream establishment
+- if `payload.model` is omitted, the worker must resolve the effective model through the normal persisted-settings validation path rather than trying to infer card-local UI state that it does not own
+- same-card effective-model stability is therefore enforced by the content script: once a card already has an established `activeModel`, same-card detailed requests and same-card retry paths must pass that value in `payload.model`
+
 ### 7.6 `explanations.cancel`
 
 Flow:
@@ -382,6 +393,12 @@ Validation expectations:
 - the product flow should already enforce the PRD-level `1-20` limit
 - the server may still enforce its defensive validation ceiling
 
+Pre-stream non-success normalization:
+
+- `409` selected-model failures must normalize to `selected_model_unavailable`
+- `403` origin rejection must normalize to a non-streaming `request_failed` result because the extension contract does not expose a narrower public origin-error code
+- other pre-stream HTTP startup failures not mapped to a narrower public code should normalize to `request_failed`
+
 ## 9. Storage Design
 
 Persisted keys:
@@ -405,23 +422,35 @@ Non-persistent data:
 - page-local geometry
 - per-request error state
 
+### 9.1 Privacy and Logging Guidance
+
+The worker and its local API helpers should carry forward the approved privacy and logging rules from `docs/specs/api-spec.md`.
+
+Rules:
+
+- selected text and generated explanation output must not be persisted in worker-owned storage
+- normal operational logs must not include selected text or generated explanation content
+- normalized error results may include stable public messages, but must not include raw payload contents unnecessarily
+- temporary debug logging, if enabled during development, should be opt-in and disabled by default
+
 ## 10. Error Mapping Strategy
 
 The worker should centralize error mapping so handlers are consistent.
 
-Recommended mapping table:
+Recommended mapping table for normalized error outcomes:
 
 | Source condition | Worker-facing result |
 | --- | --- |
 | fetch cannot connect | `service_unavailable` |
 | fixed port answers with wrong identity | `local_service_conflict` |
-| no models currently selectable | `no_models_available` |
 | persisted or requested model is unavailable | `selected_model_unavailable` |
 | timeout or retryable unexpected failure | `request_failed` |
 | explicit surfaced cancellation | `request_cancelled` |
 
 Additional rules:
 
+- `no_models_available` is not a normalized failure result for `models.list`; it is a successful catalog state and should remain `ok: true` with `data.state = "no_models_available"`
+- the same public code may still be surfaced as a blocked explanation-start outcome when the worker determines that no selectable model exists for the attempted interaction
 - `invalid_request` is primarily a contract or implementation bug signal, not a normal UI-state outcome
 - raw stack traces and raw upstream transport details must not cross the extension contract boundary
 
@@ -479,3 +508,9 @@ The following topics should be covered in separate implementation-level document
 
 - Initial implementation-level design for the worker, settings, and local API area.
 - Clarified the shared validated model-selection path for options and in-page blocked flows, tightened startup-acceptance semantics, and recorded default worker implementation decisions.
+- Clarified that `models.list` must preserve the success-state shape for `no_models_available`, and made same-card effective-model reuse explicit for detail and retry request startup.
+- Promoted the document to `In Review` after the contract-alignment pass found no remaining substantive conflicts with the approved design and spec documents.
+- Made the omitted-model startup rule executable without hidden worker knowledge of card-local state and pinned worker normalization for pre-stream non-success HTTP statuses including `403` origin rejection.
+- Marked the document as ready for project-owner approval review after the formal review and follow-up re-review found no remaining substantive findings.
+- Added explicit worker-side privacy and logging guidance so implementation-level instructions now carry forward the approved non-persistence and no-sensitive-default-logging rules.
+- Marked the document `Approved` after project-owner sign-off confirmed it as the execution baseline for implementation.

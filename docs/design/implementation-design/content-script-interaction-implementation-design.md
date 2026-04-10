@@ -2,7 +2,8 @@
 
 ## Document Status
 
-- Status: Draft
+- Status: Approved
+- Project-Owner Sign-Off: Completed
 - Related Documents:
   - `docs/design/extension-and-local-service-design.md`
   - `docs/design/repository-and-code-structure.md`
@@ -318,6 +319,7 @@ Rules:
 - `starting` must not be entered before the worker has accepted the startup request
 - startup acknowledgement is not equivalent to the forwarded `start` event
 - if the startup request is rejected before acceptance, the targeted request state should remain out of `starting` and move directly to the normalized startup-failure path
+- if the current card already has an established `activeModel`, same-card short retry should pass that value as `payload.model` so the request reuses the card-scoped effective model instead of re-resolving from global persisted settings
 
 ### 8.2 Receiving Forwarded Events
 
@@ -327,6 +329,7 @@ Rules:
 
 - ignore events that do not match the current `requestId` plus sender context
 - `start` moves the request into `streaming`
+- when the forwarded `start` event includes the authoritative `model`, the content script should set or refresh the accepted card interaction's `activeModel` from that event rather than from a separate persisted-settings read
 - `chunk` appends ordered text to `textBuffer`
 - `complete` marks success and preserves the rendered buffer
 - `error` marks failure and preserves any partial rendered buffer
@@ -351,6 +354,7 @@ When detail starts:
 Rules:
 
 - detail must reuse the same accepted snapshot and effective model as the visible card interaction
+- once the card has an established `activeModel`, the content script should pass that model explicitly as `payload.model` for detail start so the worker validates and reuses the same card-scoped effective model
 - detail must not mutate `shortRequestState`
 - detail retry replaces the prior detail request state rather than creating a parallel request
 - detail startup rejection before acceptance must not leave the detail request in `starting`
@@ -365,6 +369,7 @@ Rules:
 - detail retry replaces the detail request state
 - retry should keep the card snapshot unless the interaction has already been reset
 - retry should reuse the effective model snapshot where the design requires it
+- once `activeModel` is known for the current card, same-card retry should include that value in the `explanations.start` payload rather than depending on a fresh worker lookup from persisted global settings
 
 ### 8.5 Startup Dispatch Handling
 
@@ -521,3 +526,8 @@ The following topics should be covered elsewhere:
 
 - Initial implementation-level design for the content-script interaction area.
 - Corrected request-state transition timing to align with startup acceptance semantics, clarified the in-page picker's required worker-backed persistence path, and recorded default content-script implementation decisions.
+- Made same-card effective-model reuse explicit by requiring detail and retry flows to pass the established card-scoped `activeModel` as the `explanations.start` model override.
+- Promoted the document to `In Review` after the contract-alignment pass found no remaining substantive conflicts with the approved design and spec documents.
+- Clarified that the accepted card interaction should set or refresh `activeModel` from the forwarded `start` event so same-card detail and retry flows reuse the authoritative model actually used by the stream.
+- Marked the document as ready for project-owner approval review after the formal review and follow-up re-review found no remaining substantive findings.
+- Marked the document `Approved` after project-owner sign-off confirmed it as the execution baseline for content-script implementation.

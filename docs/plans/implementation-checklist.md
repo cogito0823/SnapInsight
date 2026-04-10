@@ -7,6 +7,7 @@
   - `docs/plans/implementation-plan.md`
   - `docs/plans/project-progress.md`
   - `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
+- `docs/design/implementation-design/options-page-and-settings-surface-implementation-design.md`
   - `docs/design/implementation-design/content-script-interaction-implementation-design.md`
   - `docs/design/implementation-design/server-streaming-and-orchestration-implementation-design.md`
 
@@ -26,10 +27,10 @@ This document should be updated during implementation rather than treated as a s
 
 ### Batch 0: Contract Readiness
 
-- [ ] Read current PRD, design, repository-structure design, API spec, and state spec together
-- [ ] Confirm no blocking contradiction exists for scaffold work
-- [ ] Record a short batch-0 review note
-- [ ] Update `docs/plans/project-progress.md`
+- [x] Read current PRD, design, repository-structure design, API spec, and state spec together
+- [x] Confirm no blocking contradiction exists for scaffold work
+- [x] Record a short batch-0 review note
+- [x] Update `docs/plans/project-progress.md`
 
 ### Batch 1: Scaffold and Shared Boundary
 
@@ -232,3 +233,4 @@ This document should be updated during implementation rather than treated as a s
 ## 5. Change Log
 
 - Initial implementation checklist created from the current implementation plan and implementation-level design documents.
+- Added the dedicated options-page implementation-level design document to the related-document set so Batch 4 settings-surface work has an explicit implementation guide.

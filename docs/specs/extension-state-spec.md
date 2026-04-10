@@ -147,6 +147,7 @@ The short and detailed request states use the same lifecycle and must evolve ind
 ```mermaid
 stateDiagram-v2
     [*] --> idle
+    idle --> error: startup rejected before acceptance
     idle --> starting: explanations.start accepted
     starting --> streaming: forwarded start event
     starting --> error: setup failure
@@ -158,6 +159,11 @@ stateDiagram-v2
     error --> starting: retry or replacement request
     cancelled --> starting: new request
 ```
+
+The visible request lifecycle distinguishes startup rejection before acceptance from failures that occur after acceptance:
+
+- startup rejection before acceptance may move the targeted request directly from `idle` to `error`
+- only an accepted `explanations.start` request may enter `starting`
 
 ## 5. Page-Local Content Script State
 
@@ -271,10 +277,12 @@ Additional rules:
 - a separate selected-model read is not required as the authoritative prerequisite for entering `starting`; startup validation may instead be completed inside the accepted explanation-start path
 - for a short explanation attempt, `activeModel` may still be `null` when the startup request is issued; the authoritative startup path must either resolve a usable effective model before stream establishment or fail the request with normalized startup error state
 - if the targeted request is `detailRequestState`, the request must belong to the same accepted card snapshot and effective `activeModel` as the visible card interaction
+- once `activeModel` has been established for the current open card, same-card detail requests and same-card retries should pass that model as the explicit `payload.model` override in `explanations.start` so later global selected-model changes do not silently alter the existing card interaction
 
 When the forwarded internal `start` event arrives:
 
 - the request state transitions to `streaming`
+- the accepted card interaction should set or refresh `activeModel` from the event's authoritative `model` field
 
 ### 6.2 Receive Chunk
 
@@ -418,3 +426,6 @@ The following would require a new design pass:
 ## 11. Change Record
 
 - Initial extension state and local storage specification created after the system design and API spec became stable enough for implementation planning.
+- Clarified that once a card-scoped `activeModel` has been established, same-card detail requests and retries should pass it explicitly through `explanations.start` so later global settings changes do not mutate the open interaction.
+- Clarified the request-lifecycle diagram so startup rejection before acceptance is shown explicitly as a direct `idle` to `error` path rather than being left implicit in the surrounding prose.
+- Clarified that the accepted card interaction updates `activeModel` from the forwarded `start` event so the card snapshot reflects the model actually used by the running stream.
