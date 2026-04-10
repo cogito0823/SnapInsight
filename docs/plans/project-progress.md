@@ -25,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: `Batch 4` completed
-- Current execution point: `Batch 4: Settings Surface` is complete; `Batch 5` is next
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, and the options-page settings surface are now in place
+- Current overall status: `Batch 5` completed
+- Current execution point: `Batch 5: In-Page Shell and Selection Snapshot` is complete; `Batch 6` is next
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, the options-page settings surface, and the content-script in-page trigger plus card-shell snapshot baseline are now in place
 
 ## 3. Completed
 
@@ -98,6 +98,14 @@ This document should be updated as implementation progresses. It complements `do
 - Completed: implemented stale-cache diagnostics that render only when live model loading fails
 - Completed: added focused extension tests covering settings persistence, stale-model rejection, and non-authoritative stale-cache fallback behavior
 
+### 3.9 Batch 5 In-Page Shell and Selection Snapshot
+
+- Completed: implemented content-side selection readers for ordinary page text and focused `input` or `textarea` selections
+- Completed: implemented pure `1-20` counting and validation helpers aligned with the approved representative examples
+- Completed: implemented viewport anchor computation and content-owned page-local card state with accepted snapshot semantics
+- Completed: implemented Shadow DOM trigger and minimal card shell with hover-open, explicit close, click-away, replacement, and document-instance reset behavior
+- Completed: added focused extension tests covering counting examples, trigger-versus-snapshot state semantics, live-selection replacement, native-highlight loss preservation, and page-instance rotation
+
 ## 4. In Progress
 
 - None currently recorded
@@ -106,14 +114,14 @@ This document should be updated as implementation progresses. It complements `do
 
 ### Immediate Next Actions
 
-- Begin `Batch 5: In-Page Shell and Selection Snapshot`
-- Reuse the completed worker-backed settings and model-selection path for later blocked in-card model picking
-- Implement content-script selection detection, anchor computation, and accepted interaction snapshot state
+- Begin `Batch 6: Short Explanation End-to-End`
+- Reuse the completed content-side snapshot shell and worker-backed settings path for the first streamed explanation flow
+- Implement worker-to-content stream forwarding, short-request lifecycle updates, and blocked in-card setup states
 
 ### First Coding Targets
 
-- Next target: `Batch 5: In-Page Shell and Selection Snapshot`
-- Planned focus: selection readers, `1-20` counting helpers, anchor computation, page-local state, and Shadow DOM trigger/card shell wiring
+- Next target: `Batch 6: Short Explanation End-to-End`
+- Planned focus: `explanations.start`, worker stream bridge, short-request state transitions, and in-card blocked or error rendering
 
 ## 6. Current Batch Tracking
 
@@ -188,8 +196,19 @@ Review note:
 
 ### Batch 5: In-Page Shell and Selection Snapshot
 
-- Status: Not started
+- Status: Completed
 - Goal: establish the in-page trigger, card shell, and snapshot-based page-local state
+
+Review note:
+
+- Added content-side selection readers for ordinary page text and focused `input` or `textarea` selections, plus pure `1-20` validation helpers and representative example coverage
+- Added viewport-anchor computation, page-instance id generation, navigation-triggered document-instance reset wiring, and content-owned page-local card state helpers
+- Added Shadow DOM rendering for the in-page trigger and minimal card shell, including hover-open, explicit close, click-away reset, and replacement-by-new-selection behavior
+- Current implementation follows the approved batch-5 counting examples, including `AI大模型 -> 5`, and the focused tests now lock that representative behavior in place for subsequent content-script work
+- Follow-up fixes now keep trigger-visible live selection separate from the accepted card snapshot stored in content state
+- The hover-open path now revalidates the current live selection before opening the card and captures the accepted snapshot only after that revalidation succeeds
+- Verified the batch with focused extension tests, extension type-check, production build, lint inspection, and source checks covering accepted-snapshot timing, replacement semantics, native-highlight loss behavior, and page-instance rotation
+- Alignment result: the current content-script shell baseline matches the approved PRD interaction rules, content-script implementation design, repository structure guidance, API sender-context expectations used in this batch, and extension-state snapshot semantics required for `Batch 5`
 
 ### Batch 6: Short Explanation End-to-End
 

@@ -83,17 +83,17 @@ This document should be updated during implementation rather than treated as a s
 
 ### Batch 5: In-Page Shell and Selection Snapshot
 
-- [ ] Implement selection readers for ordinary page text and `input` or `textarea`
-- [ ] Implement pure counting and validation helpers for the `1-20` rule
-- [ ] Implement anchor computation
-- [ ] Implement page-local state container
-- [ ] Implement Shadow DOM root, trigger, and card shell
-- [ ] Implement click-away, close, replacement, and reload reset behavior
-- [ ] Verify valid selections show the trigger and invalid selections do not
-- [ ] Verify accepted card snapshot survives loss of native highlight
-- [ ] Verify reload creates a new `pageInstanceId`
-- [ ] Perform phase alignment review for content-script snapshot behavior
-- [ ] Update `docs/plans/project-progress.md`
+- [x] Implement selection readers for ordinary page text and `input` or `textarea`
+- [x] Implement pure counting and validation helpers for the `1-20` rule
+- [x] Implement anchor computation
+- [x] Implement page-local state container
+- [x] Implement Shadow DOM root, trigger, and card shell
+- [x] Implement click-away, close, replacement, and reload reset behavior
+- [x] Verify valid selections show the trigger and invalid selections do not
+- [x] Verify accepted card snapshot survives loss of native highlight
+- [x] Verify reload creates a new `pageInstanceId`
+- [x] Perform phase alignment review for content-script snapshot behavior
+- [x] Update `docs/plans/project-progress.md`
 
 ### Batch 6: Short Explanation End-to-End
 
