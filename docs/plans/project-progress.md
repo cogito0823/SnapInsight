@@ -25,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: `Batches 0-6 complete`
-- Current execution point: `Batch 6` is now complete with verification and alignment review recorded, and `Batch 7` is the next execution target
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, the options-page settings surface, the content-script in-page trigger plus card-shell snapshot baseline, and the first end-to-end short explanation flow are now in place, including worker-stream forwarding, content-side short-request lifecycle rendering, and blocked in-card setup handling for missing or invalid model selection
+- Current overall status: `Batches 0-7 complete`
+- Current execution point: `Batch 7` is now complete with verification and alignment review recorded, and `Batch 8` is the next execution target
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, the options-page settings surface, the content-script in-page trigger plus card-shell snapshot baseline, the first end-to-end short explanation flow, and the same-card detailed explanation flow are now in place, including visible-short-content gating, independent detail request state, same-card model reuse, detail retry replacement, and in-card model-reselection recovery for both short and detail areas
 
 ## 3. Completed
 
@@ -115,6 +115,14 @@ This document should be updated as implementation progresses. It complements `do
 - Completed: tightened content-side async interaction scoping so stale startup or picker results from an older same-text interaction cannot bind into a newer card in the same document
 - Completed: verified the batch with focused extension tests, extension type-check, production build, server unit/integration tests, and lint inspection
 
+### 3.11 Batch 7 Detailed Explanation and Coordination Rules
+
+- Completed: implemented the same-card `查看更多` flow with visible-short-content gating and independent detail-request rendering
+- Completed: reused the accepted snapshot, sender-context routing, and card-scoped `activeModel` for detailed explanation startup and retry
+- Completed: implemented repeated-detail deduplication, detail retry replacement, and best-effort detail cancellation during close, replacement, and navigation resets
+- Completed: implemented in-card model-reselection recovery for detail-side `selected_model_unavailable` outcomes without collapsing the existing short explanation area
+- Completed: verified the batch with focused extension tests, extension type-check, production build, server unit/integration tests, and lint inspection
+
 ## 4. In Progress
 
 - None currently recorded
@@ -123,14 +131,14 @@ This document should be updated as implementation progresses. It complements `do
 
 ### Immediate Next Actions
 
-- Begin `Batch 7: Detailed Explanation and Coordination Rules`
-- Reuse the completed short-explanation baseline, accepted snapshot flow, and worker bridge for same-card detail expansion
-- Implement detail gating, independent detail request state, and repeated-detail deduplication
+- Begin `Batch 8: Hardening and Release Readiness`
+- Reuse the completed short and detailed explanation flows for final verification and contract hardening
+- Add only the remaining high-value tests and finish final manual and document-alignment review work
 
 ### First Coding Targets
 
-- Next target: `Batch 7: Detailed Explanation and Coordination Rules`
-- Planned focus: `查看更多`, visible-short-content gating, independent detail request state, and same-card coordination rules
+- Next target: `Batch 8: Hardening and Release Readiness`
+- Planned focus: final verification, document-alignment review, controlled deferrals, and release-readiness documentation
 
 ## 6. Current Batch Tracking
 
@@ -240,8 +248,17 @@ Review note:
 
 ### Batch 7: Detailed Explanation and Coordination Rules
 
-- Status: Not started
+- Status: Completed
 - Goal: complete the same-card detailed explanation flow and coordination rules
+
+Review note:
+
+- Implemented the same-card detail experience with a dedicated detail section, `查看更多` trigger, visible-short-content gating, and independent detail request lifecycle rendering so short and detail content no longer overwrite each other
+- Implemented same-card detail startup and retry using the accepted selection snapshot, the current routed sender context, and the card-scoped `activeModel`, so detail startup does not silently fall back to a later global selected-model value
+- Implemented repeated-detail deduplication and detail retry replacement by refusing parallel detail startup while a detail request is already dispatching or active, and by reusing one explicit replacement path when retry is requested
+- Implemented detail-side blocked recovery for `selected_model_unavailable` so model re-selection can complete inside the detail area and resume the intended detailed request instead of incorrectly dropping back into the short path
+- Verified the batch with focused extension tests covering detail gating, detail-area failure preservation, detail-side model-picker rendering, explicit detailed-model override forwarding, request-state independence, extension type-check, production build, full server tests, lint inspection, and source checks for repeated-detail deduplication and stale-event routing
+- Alignment review result: no remaining substantive code-versus-design findings were identified for `Batch 7`; the implemented detail flow now matches the approved gating, same-card reuse, retry-replacement, and stale-routing requirements
 
 ### Batch 8: Hardening and Release Readiness
 
@@ -304,3 +321,4 @@ Avoid vague entries such as:
 - Recorded the fix for the accepted-snapshot regression in `extension/src/content/state/selection-interaction.ts`, added a focused regression test for repeated same-selection events against an already open card, and removed that issue from the active blockers that still gate `Batch 6`.
 - Recorded the fix for the server allowed-origin enforcement gap by wiring explicit `Origin` validation into `GET /health` and `GET /v1/models`, adding focused integration coverage for missing and untrusted origins, and removing that issue from the active blockers that still gate `Batch 6`.
 - Recorded `Batch 6` completion, including the short explanation end-to-end flow, focused extension and server verification, the final interaction-scoping fix for stale same-text async rebinding, and a clean post-batch alignment review outcome with no remaining substantive findings.
+- Recorded `Batch 7` completion, including same-card detail rendering, independent detail request coordination, detail-side model-reselection recovery, focused verification, and a clean post-batch alignment review outcome with no remaining substantive findings.

@@ -86,3 +86,28 @@ test("startup rejection can move directly from idle-equivalent setup into error"
   assert.equal(errored.requestId, "req-4");
   assert.equal(errored.textBuffer, "");
 });
+
+test("detail request state can progress independently from visible short content", () => {
+  const shortState = applyChunkToRequestState(
+    applyForwardedStartEvent(createStartingRequestState("short", "req-short"), {
+      event: "start",
+      requestId: "req-short",
+      mode: "short",
+      model: "llama3.1:8b"
+    }),
+    "已有简短解释"
+  );
+  const detailState = applyForwardedStartEvent(
+    createStartingRequestState("detailed", "req-detail"),
+    {
+      event: "start",
+      requestId: "req-detail",
+      mode: "detailed",
+      model: "llama3.1:8b"
+    }
+  );
+
+  assert.equal(shortState.textBuffer, "已有简短解释");
+  assert.equal(detailState.phase, "streaming");
+  assert.equal(detailState.textBuffer, "");
+});

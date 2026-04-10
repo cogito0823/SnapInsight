@@ -112,18 +112,18 @@ This document should be updated during implementation rather than treated as a s
 
 ### Batch 7: Detailed Explanation and Coordination Rules
 
-- [ ] Implement the `查看更多` action
-- [ ] Gate detailed explanation on visible short content
-- [ ] Keep short and detail request state independent
-- [ ] Reuse the same accepted snapshot and effective model for detail
-- [ ] Deduplicate repeated detail triggers
-- [ ] Implement detail retry replacement
-- [ ] Verify detail cannot start before visible short content exists
-- [ ] Verify repeated detail triggers do not create parallel detail requests
-- [ ] Verify detail failure does not erase visible short content
-- [ ] Verify detailed explanation prioritizes fuller definition, background, usage scenarios, and examples
-- [ ] Perform phase alignment review for detailed explanation flow
-- [ ] Update `docs/plans/project-progress.md`
+- [x] Implement the `查看更多` action
+- [x] Gate detailed explanation on visible short content
+- [x] Keep short and detail request state independent
+- [x] Reuse the same accepted snapshot and effective model for detail
+- [x] Deduplicate repeated detail triggers
+- [x] Implement detail retry replacement
+- [x] Verify detail cannot start before visible short content exists
+- [x] Verify repeated detail triggers do not create parallel detail requests
+- [x] Verify detail failure does not erase visible short content
+- [x] Verify detailed explanation prioritizes fuller definition, background, usage scenarios, and examples
+- [x] Perform phase alignment review for detailed explanation flow
+- [x] Update `docs/plans/project-progress.md`
 
 ### Batch 8: Hardening and Release Readiness
 

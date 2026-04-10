@@ -366,3 +366,110 @@ test("cancellation aborts the registered active stream by scoped identity", asyn
     chromeEnv.restore();
   }
 });
+
+test("detailed explanation startup preserves explicit model override", async () => {
+  const chromeEnv = installMockChrome();
+  let capturedBody: Record<string, unknown> | null = null;
+  const restoreFetch = installFetchMock(async (input, init) => {
+    if (input.endsWith("/health")) {
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          service: "snapinsight-local-api",
+          version: "v1",
+          ollamaReachable: true
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json"
+          }
+        }
+      );
+    }
+
+    if (input.endsWith("/v1/models")) {
+      return new Response(
+        JSON.stringify({
+          state: "ready",
+          models: [
+            {
+              id: "llama3.1:8b",
+              label: "llama3.1:8b",
+              provider: "ollama",
+              available: true
+            }
+          ]
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json"
+          }
+        }
+      );
+    }
+
+    if (input.endsWith("/v1/explanations/stream")) {
+      capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      return new Response(
+        [
+          JSON.stringify({
+            event: "start",
+            requestId: "req-detailed",
+            mode: "detailed",
+            model: "llama3.1:8b"
+          }),
+          JSON.stringify({
+            event: "complete",
+            requestId: "req-detailed"
+          })
+        ].join("\n") + "\n",
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/x-ndjson"
+          }
+        }
+      );
+    }
+
+    throw new Error(`Unexpected fetch input: ${input}`);
+  });
+
+  try {
+    const response = await handleExplanationsStart(
+      {
+        type: "explanations.start",
+        payload: {
+          requestId: "req-detailed",
+          senderContext: {
+            tabId: -1,
+            frameId: 0,
+            pageInstanceId: "doc-detail"
+          },
+          text: "Transformer",
+          mode: "detailed",
+          model: "llama3.1:8b"
+        }
+      },
+      {
+        tab: {
+          id: 321
+        } as chrome.tabs.Tab,
+        frameId: 0
+      }
+    );
+
+    assert.equal(response.ok, true);
+    assert.deepEqual(capturedBody, {
+      requestId: "req-detailed",
+      text: "Transformer",
+      model: "llama3.1:8b",
+      mode: "detailed"
+    });
+  } finally {
+    restoreFetch();
+    chromeEnv.restore();
+  }
+});

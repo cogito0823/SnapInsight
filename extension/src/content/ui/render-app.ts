@@ -11,6 +11,8 @@ export interface RenderCallbacks {
   onTriggerHover: () => void;
   onCloseCard: () => void;
   onRetryShort: () => void;
+  onExpandDetail: () => void;
+  onRetryDetail: () => void;
   onModelSelectionChange: (modelId: string) => void;
   onSaveModelSelection: () => void;
 }
@@ -21,13 +23,15 @@ export interface TriggerViewState {
 
 export interface ModelPickerViewState {
   phase: "idle" | "loading" | "ready" | "no_models_available" | "error" | "saving";
+  targetArea: "short" | "detail" | null;
   options: ModelSummary[];
   selectedModel: string | null;
   error: ExtensionError | null;
 }
 
 export interface RequestRenderViewState {
-  dispatchPending: boolean;
+  shortDispatchPending: boolean;
+  detailDispatchPending: boolean;
   modelPicker: ModelPickerViewState;
 }
 
@@ -99,7 +103,10 @@ function renderCard(state: ContentCardState): string {
         <button id="snapinsight-close" type="button" aria-label="关闭卡片">×</button>
       </header>
       <div class="snapinsight-card-selection">${selectionText}</div>
-      <div class="snapinsight-card-body">__SNAPINSIGHT_SHORT_SECTION__</div>
+      <div class="snapinsight-card-body">
+        __SNAPINSIGHT_SHORT_SECTION__
+        __SNAPINSIGHT_DETAIL_SECTION__
+      </div>
     </section>
   `;
 }
@@ -138,6 +145,18 @@ function renderRetryButton(error: ExtensionError): string {
   return `
     <button id="snapinsight-retry-short" type="button" class="snapinsight-secondary-button">
       重试
+    </button>
+  `;
+}
+
+function renderDetailRetryButton(error: ExtensionError): string {
+  if (!error.retryable) {
+    return "";
+  }
+
+  return `
+    <button id="snapinsight-retry-detail" type="button" class="snapinsight-secondary-button">
+      重试详细解释
     </button>
   `;
 }
@@ -237,7 +256,7 @@ function renderShortSection(
 ): string {
   const request = state.shortRequestState;
 
-  if (viewState.dispatchPending || request.phase === "starting") {
+  if (viewState.shortDispatchPending || request.phase === "starting") {
     return renderLoadingState("正在生成简短解释...");
   }
 
@@ -258,7 +277,10 @@ function renderShortSection(
   }
 
   if (request.phase === "error" && request.errorState) {
-    if (request.errorState.code === "selected_model_unavailable") {
+    if (
+      request.errorState.code === "selected_model_unavailable" &&
+      viewState.modelPicker.targetArea !== "detail"
+    ) {
       return renderModelPicker(viewState.modelPicker);
     }
 
@@ -281,6 +303,94 @@ function renderShortSection(
   }
 
   return renderLoadingState("正在准备解释请求...");
+}
+
+function renderDetailAction(state: ContentCardState): string {
+  const canExpand = state.shortRequestState.textBuffer.trim().length > 0;
+
+  return `
+    <button
+      id="snapinsight-expand-detail"
+      type="button"
+      class="snapinsight-secondary-button"
+      ${canExpand ? "" : "disabled"}
+    >
+      查看更多
+    </button>
+  `;
+}
+
+function renderDetailSection(
+  state: ContentCardState,
+  viewState: RequestRenderViewState
+): string {
+  if (!state.detailExpanded) {
+    return renderDetailAction(state);
+  }
+
+  const request = state.detailRequestState;
+
+  if (viewState.detailDispatchPending || request.phase === "starting") {
+    return `
+      <div class="snapinsight-detail-section">
+        <div class="snapinsight-section-label">详细解释</div>
+        ${renderLoadingState("正在生成更完整的解释...")}
+      </div>
+    `;
+  }
+
+  if (request.phase === "streaming" || request.phase === "completed") {
+    return `
+      <div class="snapinsight-detail-section">
+        <div class="snapinsight-section-label">详细解释</div>
+        <div class="snapinsight-response-text">${escapeHtml(
+          request.textBuffer || "正在生成更完整的解释..."
+        )}</div>
+        ${
+          request.phase === "streaming"
+            ? '<div class="snapinsight-footnote">详细解释正在持续生成...</div>'
+            : ""
+        }
+      </div>
+    `;
+  }
+
+  if (request.phase === "error" && request.errorState) {
+    if (request.errorState.code === "selected_model_unavailable") {
+      return `
+        <div class="snapinsight-detail-section">
+          <div class="snapinsight-section-label">详细解释</div>
+          ${renderModelPicker(viewState.modelPicker)}
+        </div>
+      `;
+    }
+
+    return `
+      <div class="snapinsight-detail-section">
+        <div class="snapinsight-section-label">详细解释</div>
+        <div class="snapinsight-blocked-state">
+          ${
+            request.textBuffer
+              ? `<div class="snapinsight-response-text">${escapeHtml(
+                  request.textBuffer
+                )}</div>`
+              : ""
+          }
+          <div class="snapinsight-blocked-message">
+            ${escapeHtml(describeError(request.errorState))}
+          </div>
+          ${renderDetailRetryButton(request.errorState)}
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="snapinsight-detail-section">
+      <div class="snapinsight-section-label">详细解释</div>
+      ${renderLoadingState("点击查看更多后会在这里展开详细解释。")}
+    </div>
+  `;
 }
 
 export function renderContentApp(
@@ -375,6 +485,18 @@ export function renderContentApp(
         color: #334155;
         font-size: 13px;
         line-height: 1.5;
+      }
+
+      .snapinsight-short-section,
+      .snapinsight-detail-section {
+        display: grid;
+        gap: 8px;
+      }
+
+      .snapinsight-detail-section {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(148, 163, 184, 0.2);
       }
 
       .snapinsight-section-label {
@@ -496,6 +618,9 @@ export function renderContentApp(
           ? renderCard(state).replace(
               "__SNAPINSIGHT_SHORT_SECTION__",
               renderShortSection(state, requestViewState)
+            ).replace(
+              "__SNAPINSIGHT_DETAIL_SECTION__",
+              renderDetailSection(state, requestViewState)
             )
           : ""
       }
@@ -515,6 +640,16 @@ export function renderContentApp(
   const retryButton = root.getElementById("snapinsight-retry-short");
   if (retryButton instanceof HTMLButtonElement) {
     retryButton.addEventListener("click", callbacks.onRetryShort);
+  }
+
+  const expandDetailButton = root.getElementById("snapinsight-expand-detail");
+  if (expandDetailButton instanceof HTMLButtonElement) {
+    expandDetailButton.addEventListener("click", callbacks.onExpandDetail);
+  }
+
+  const retryDetailButton = root.getElementById("snapinsight-retry-detail");
+  if (retryDetailButton instanceof HTMLButtonElement) {
+    retryDetailButton.addEventListener("click", callbacks.onRetryDetail);
   }
 
   const modelSelect = root.getElementById("snapinsight-model-select");
