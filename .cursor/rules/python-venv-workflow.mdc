@@ -1,0 +1,13 @@
+---
+description: Require project-local venv for all Python execution
+alwaysApply: true
+---
+
+# Python Virtual Environment Workflow
+
+- All Python work in this project must use a project-local virtual environment at `.venv/`.
+- If `.venv/` does not exist yet, create it in the repository root before running any Python command: `python3 -m venv .venv`.
+- Before every Python-related command, activate the project environment first: `source .venv/bin/activate`.
+- This rule applies to all Python execution, including `python`, `pip`, `pytest`, `uvicorn`, migration tools, scripts, and one-off shell commands.
+- When using shell commands, keep activation in the same command context, for example: `source .venv/bin/activate && python script.py`.
+- Do not use the system Python environment or a global virtualenv for project work unless the user explicitly overrides this rule.

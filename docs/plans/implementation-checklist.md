@@ -34,13 +34,13 @@ This document should be updated during implementation rather than treated as a s
 
 ### Batch 1: Scaffold and Shared Boundary
 
-- [ ] Scaffold `extension/` and `server/`
-- [ ] Create runtime entrypoints for content, worker, options, and server
-- [ ] Create shared message, event, error, and routing contracts
-- [ ] Keep runtime-owned state out of shared modules
-- [ ] Verify resulting repository structure matches the approved design closely enough
-- [ ] Perform phase alignment review for scaffold and shared-boundary work
-- [ ] Update `docs/plans/project-progress.md`
+- [x] Scaffold `extension/` and `server/`
+- [x] Create runtime entrypoints for content, worker, options, and server
+- [x] Create shared message, event, error, and routing contracts
+- [x] Keep runtime-owned state out of shared modules
+- [x] Verify resulting repository structure matches the approved design closely enough
+- [x] Perform phase alignment review for scaffold and shared-boundary work
+- [x] Update `docs/plans/project-progress.md`
 
 ### Batch 2: Local Service Foundation
 

@@ -25,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: Pre-implementation documentation approved
-- Current execution point: the implementation-level design package is approved and the project is ready to begin `Batch 1`
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; no scaffold-blocking contradiction is currently recorded
+- Current overall status: `Batch 1` completed
+- Current execution point: scaffold and shared-boundary work is complete; `Batch 2` has not started
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, and shared runtime contracts are now in place
 
 ## 3. Completed
 
@@ -66,6 +66,14 @@ This document should be updated as implementation progresses. It complements `do
 - Completed: a final pre-approval review checklist was added so the project owner can perform one explicit approval pass before implementation begins
 - Completed: the project owner approved the implementation-level design package and it now serves as the execution baseline for `Batch 1` and later phases
 
+### 3.5 Batch 1 Implementation Baseline
+
+- Completed: scaffolded `extension/` and `server/` according to the approved repository-structure guidance
+- Completed: created runtime entrypoints for content script, service worker, options page, and server startup
+- Completed: added shared extension contracts for worker messages, forwarded stream events, error objects, sender context, and reusable request-state types
+- Completed: established extension build tooling with Vite and TypeScript and server packaging baseline with FastAPI dependencies
+- Completed: added a project-wide Cursor rule requiring a repository-local `.venv` and activation before every Python command
+
 ## 4. In Progress
 
 - None currently recorded
@@ -74,15 +82,14 @@ This document should be updated as implementation progresses. It complements `do
 
 ### Immediate Next Actions
 
-- Confirm current repository baseline against the implementation plan
-- Start `Batch 1: Scaffold and Shared Boundary`
-- Begin scaffold planning against the approved repository structure and implementation-level design package
+- Pause at the end of `Batch 1` until the next implementation instruction is confirmed
+- Keep `Batch 2: Local Service Foundation` as the next planned phase, but do not begin it yet
+- Use the current scaffold and contract boundary as the baseline for the next coding pass
 
 ### First Coding Targets
 
-- scaffold `extension/` and `server/` if missing
-- create runtime entrypoints for content, worker, options, and server
-- create shared contracts for health, models, settings, explanation start, cancellation, and stream events
+- Next target when implementation resumes: `Batch 2: Local Service Foundation`
+- Planned focus: FastAPI app baseline, `GET /health`, `GET /v1/models`, origin validation, and Ollama adapter boundary
 
 ## 6. Current Batch Tracking
 
@@ -104,12 +111,20 @@ Review note:
 
 ### Batch 1: Scaffold and Shared Boundary
 
-- Status: Not started
+- Status: Completed
 - Goal: create repository structure and shared extension contract boundary
 - Completion signal:
   - repository structure matches approved design closely enough for implementation
   - shared contracts exist
   - runtime-owned state has not been misplaced into shared modules
+
+Review note:
+
+- Scaffolded `extension/` with Vite + TypeScript and `server/` with FastAPI packaging baseline
+- Added runtime entrypoints for content script, service worker, options page, and server app startup
+- Added shared contract modules for worker messages, forwarded stream events, public error objects, model summaries, sender context, and shared request-state types
+- Kept runtime-owned state logic out of `extension/src/shared/`; shared modules currently hold serializable contracts and reusable types only
+- Verified the scaffold with extension type-check and production build plus Python syntax compilation for the server baseline
 
 ### Batch 2: Local Service Foundation
 
@@ -196,3 +211,5 @@ Avoid vague entries such as:
 - Recorded the follow-up implementation-design coverage pass that added the options-page implementation design and filled the missing privacy/logging and origin-validation configuration guidance.
 - Recorded that a final pre-approval review checklist was added and that project-owner sign-off is now the immediate gate before `Batch 1`.
 - Recorded project-owner sign-off completion and updated the project state so the approved implementation-level design package is now the baseline for starting `Batch 1`.
+- Recorded the start of `Batch 1` implementation work and moved scaffold and shared-boundary setup into the active execution state.
+- Recorded `Batch 1` completion, including scaffold verification results, and explicitly held the project before `Batch 2` per the current instruction.

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "snapinsight-server"
+version = "0.1.0"
+description = "Local SnapInsight API service."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "httpx",
+  "pydantic-settings",
+  "uvicorn[standard]"
+]
+
+[project.scripts]
+snapinsight-local-api = "app.main:run"
+
+[tool.setuptools.packages.find]
+include = ["app*"]

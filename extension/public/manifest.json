@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "SnapInsight",
+  "version": "0.1.0",
+  "description": "Local AI explanations for selected text.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://127.0.0.1:11435/*"],
+  "background": {
+    "service_worker": "worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "SnapInsight"
+  }
+}
