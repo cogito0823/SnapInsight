@@ -56,3 +56,13 @@ def create_invalid_request_error(message: str = "Request payload is invalid.") -
         message=message,
         retryable=False,
     )
+
+
+def create_selected_model_unavailable_error(
+    message: str = "A valid model must be selected before explanation can start.",
+) -> PublicError:
+    return PublicError(
+        code="selected_model_unavailable",
+        message=message,
+        retryable=False,
+    )

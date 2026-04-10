@@ -97,18 +97,18 @@ This document should be updated during implementation rather than treated as a s
 
 ### Batch 6: Short Explanation End-to-End
 
-- [ ] Implement `POST /v1/explanations/stream`
-- [ ] Implement worker-side explanation startup path
-- [ ] Implement stream forwarding from worker to content script
-- [ ] Implement short-request state transitions in the content script
-- [ ] Render short explanation loading, streaming, completion, and error behavior
-- [ ] Render blocked setup states in the card
-- [ ] Render the lightweight in-page model picker only for missing or invalid model selection cases
-- [ ] Verify short explanation streams progressively into the card
-- [ ] Verify startup failures map deterministically to documented public codes
-- [ ] Verify short explanation output remains concise and Chinese-first where appropriate
-- [ ] Perform phase alignment review for short explanation flow
-- [ ] Update `docs/plans/project-progress.md`
+- [x] Implement `POST /v1/explanations/stream`
+- [x] Implement worker-side explanation startup path
+- [x] Implement stream forwarding from worker to content script
+- [x] Implement short-request state transitions in the content script
+- [x] Render short explanation loading, streaming, completion, and error behavior
+- [x] Render blocked setup states in the card
+- [x] Render the lightweight in-page model picker only for missing or invalid model selection cases
+- [x] Verify short explanation streams progressively into the card
+- [x] Verify startup failures map deterministically to documented public codes
+- [x] Verify short explanation output remains concise and Chinese-first where appropriate
+- [x] Perform phase alignment review for short explanation flow
+- [x] Update `docs/plans/project-progress.md`
 
 ### Batch 7: Detailed Explanation and Coordination Rules
 

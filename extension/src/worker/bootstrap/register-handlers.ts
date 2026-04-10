@@ -19,7 +19,10 @@ function isWorkerMessage(value: unknown): value is WorkerMessage {
   return typeof (value as { type?: unknown }).type === "string";
 }
 
-async function handleWorkerMessage(message: WorkerMessage): Promise<WorkerResponse> {
+async function handleWorkerMessage(
+  message: WorkerMessage,
+  sender: chrome.runtime.MessageSender
+): Promise<WorkerResponse> {
   switch (message.type) {
     case "health.check":
       return handleHealthCheck();
@@ -30,9 +33,9 @@ async function handleWorkerMessage(message: WorkerMessage): Promise<WorkerRespon
     case "settings.setSelectedModel":
       return handleSettingsSetSelectedModel(message);
     case "explanations.start":
-      return handleExplanationsStart(message);
+      return handleExplanationsStart(message, sender);
     case "explanations.cancel":
-      return handleExplanationsCancel(message);
+      return handleExplanationsCancel(message, sender);
     default:
       return {
         ok: false,
@@ -52,12 +55,12 @@ export function registerMessageHandlers(): void {
     return;
   }
 
-  chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     if (!isWorkerMessage(message)) {
       return false;
     }
 
-    void handleWorkerMessage(message)
+    void handleWorkerMessage(message, sender)
       .then((response) => {
         sendResponse(response);
       })

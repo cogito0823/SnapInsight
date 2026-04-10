@@ -9,6 +9,7 @@ from app.api.health import router as health_router
 from app.api.models import router as models_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
+from app.services.explanation_service import ExplanationService
 from app.services.health_service import HealthService
 from app.services.model_catalog_service import ModelCatalogService
 
@@ -43,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ollama_probe=ollama_client,
     )
     app.state.model_catalog_service = ModelCatalogService(ollama_client)
+    app.state.explanation_service = ExplanationService(ollama_client)
 
     app.include_router(health_router)
     app.include_router(models_router)

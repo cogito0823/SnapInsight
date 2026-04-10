@@ -25,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: `Batches 0-5 complete and alignment follow-up resolved`
-- Current execution point: the implementation baseline through `Batch 5` is in place, the formal post-`Batch 5` alignment follow-up issues have been resolved, and `Batch 6` is now the next execution target
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, the options-page settings surface, and the content-script in-page trigger plus card-shell snapshot baseline are now in place, with the post-`Batch 5` follow-up now closing the content accepted-snapshot regression, the server-origin-enforcement gap, and the options settings-surface boundary drift
+- Current overall status: `Batches 0-6 complete`
+- Current execution point: `Batch 6` is now complete with verification and alignment review recorded, and `Batch 7` is the next execution target
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, the options-page settings surface, the content-script in-page trigger plus card-shell snapshot baseline, and the first end-to-end short explanation flow are now in place, including worker-stream forwarding, content-side short-request lifecycle rendering, and blocked in-card setup handling for missing or invalid model selection
 
 ## 3. Completed
 
@@ -107,6 +107,14 @@ This document should be updated as implementation progresses. It complements `do
 - Completed: implemented Shadow DOM trigger and minimal card shell with hover-open, explicit close, click-away, replacement, and document-instance reset behavior
 - Completed: added focused extension tests covering counting examples, trigger-versus-snapshot state semantics, live-selection replacement, native-highlight loss preservation, and page-instance rotation
 
+### 3.10 Batch 6 Short Explanation End-to-End
+
+- Completed: implemented `POST /v1/explanations/stream` with startup validation, selected-model conflict mapping, NDJSON start or chunk or complete or error event output, and focused server integration coverage
+- Completed: implemented worker-side `explanations.start` and `explanations.cancel`, active stream registration, stream forwarding, startup failure normalization, and focused worker tests for acceptance, deterministic startup failures, and scoped cancellation
+- Completed: implemented content-side short-request lifecycle updates, streamed card rendering, blocked in-card setup states, and the lightweight model-selection picker path that reuses `settings.setSelectedModel`
+- Completed: tightened content-side async interaction scoping so stale startup or picker results from an older same-text interaction cannot bind into a newer card in the same document
+- Completed: verified the batch with focused extension tests, extension type-check, production build, server unit/integration tests, and lint inspection
+
 ## 4. In Progress
 
 - None currently recorded
@@ -115,14 +123,14 @@ This document should be updated as implementation progresses. It complements `do
 
 ### Immediate Next Actions
 
-- Begin `Batch 6: Short Explanation End-to-End`
-- Reuse the now-aligned content snapshot baseline, worker-backed settings read path, and origin-enforced local API baseline for the first streamed explanation flow
-- Implement worker-to-content stream forwarding, short-request lifecycle updates, and blocked in-card setup states
+- Begin `Batch 7: Detailed Explanation and Coordination Rules`
+- Reuse the completed short-explanation baseline, accepted snapshot flow, and worker bridge for same-card detail expansion
+- Implement detail gating, independent detail request state, and repeated-detail deduplication
 
 ### First Coding Targets
 
-- Next target: `Batch 6: Short Explanation End-to-End`
-- Planned focus: `explanations.start`, worker stream bridge, short-request state transitions, and in-card blocked or error rendering
+- Next target: `Batch 7: Detailed Explanation and Coordination Rules`
+- Planned focus: `查看更多`, visible-short-content gating, independent detail request state, and same-card coordination rules
 
 ## 6. Current Batch Tracking
 
@@ -219,8 +227,16 @@ Review note:
 
 ### Batch 6: Short Explanation End-to-End
 
-- Status: Not started
+- Status: Completed
 - Goal: complete the first end-to-end explanation flow
+
+Review note:
+
+- Implemented the server explanation route, request schema, prompt-building orchestration, and NDJSON event schema so short explanation startup and post-start failures now follow the approved pre-stream-vs-in-stream boundary
+- Implemented the worker explanation-start path as the authoritative startup gate, including persisted-model fallback, explicit model-override validation, scoped active-stream forwarding, and best-effort cancellation by `requestId` plus `senderContext`
+- Implemented content-side short-request state transitions, loading and streaming rendering, retryable error handling, and in-card blocked setup presentation, with the lightweight model picker limited to the missing or invalid model-selection path and reusing the validated worker-backed persistence flow
+- Added focused automated checks for worker stream forwarding, deterministic startup failure mapping, short-request state transitions, server stream-route behavior, and short-mode prompt guidance for concise Chinese-first output
+- Alignment review result: no remaining substantive code-versus-design findings were identified for `Batch 6` after the final interaction-scoping fix that prevents stale same-text async startup results from rebinding into a newer card interaction
 
 ### Batch 7: Detailed Explanation and Coordination Rules
 
@@ -287,3 +303,4 @@ Avoid vague entries such as:
 - Recorded the formal post-`Batch 5` alignment review outcome, including one high-severity content-script snapshot regression, one server allowed-origin enforcement gap, and one lower-severity options-page diagnostics boundary drift; updated current status so `Batch 6` remains blocked until these follow-up items are resolved or explicitly documented.
 - Recorded the fix for the accepted-snapshot regression in `extension/src/content/state/selection-interaction.ts`, added a focused regression test for repeated same-selection events against an already open card, and removed that issue from the active blockers that still gate `Batch 6`.
 - Recorded the fix for the server allowed-origin enforcement gap by wiring explicit `Origin` validation into `GET /health` and `GET /v1/models`, adding focused integration coverage for missing and untrusted origins, and removing that issue from the active blockers that still gate `Batch 6`.
+- Recorded `Batch 6` completion, including the short explanation end-to-end flow, focused extension and server verification, the final interaction-scoping fix for stale same-text async rebinding, and a clean post-batch alignment review outcome with no remaining substantive findings.

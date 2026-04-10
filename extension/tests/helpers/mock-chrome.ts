@@ -1,25 +1,65 @@
 export interface MockChromeEnvironment {
   storageState: Record<string, unknown>;
   sentMessages: unknown[];
+  tabMessages: Array<{
+    tabId: number;
+    message: unknown;
+    options?: chrome.tabs.MessageSendOptions;
+  }>;
+  emitRuntimeMessage: (
+    message: unknown,
+    sender?: chrome.runtime.MessageSender
+  ) => Promise<void>;
   restore: () => void;
 }
 
 type RuntimeSendMessage = (message: unknown) => Promise<unknown>;
+type TabsSendMessage = (
+  tabId: number,
+  message: unknown,
+  options?: chrome.tabs.MessageSendOptions
+) => Promise<unknown>;
 
 export function installMockChrome(options?: {
   initialStorage?: Record<string, unknown>;
   sendMessage?: RuntimeSendMessage;
+  tabsSendMessage?: TabsSendMessage;
 }): MockChromeEnvironment {
   const storageState = {
     ...(options?.initialStorage ?? {})
   };
   const sentMessages: unknown[] = [];
+  const tabMessages: Array<{
+    tabId: number;
+    message: unknown;
+    options?: chrome.tabs.MessageSendOptions;
+  }> = [];
+  const runtimeListeners: Array<
+    (
+      message: unknown,
+      sender: chrome.runtime.MessageSender,
+      sendResponse: (response?: unknown) => void
+    ) => boolean | void
+  > = [];
   const originalChrome = (globalThis as typeof globalThis & { chrome?: typeof chrome })
     .chrome;
 
   const chromeMock = {
     runtime: {
       lastError: undefined as chrome.runtime.LastError | undefined,
+      onMessage: {
+        addListener: (listener) => {
+          runtimeListeners.push(listener);
+        },
+        removeListener: (listener) => {
+          const index = runtimeListeners.indexOf(listener);
+          if (index >= 0) {
+            runtimeListeners.splice(index, 1);
+          }
+        },
+        hasListener: (listener) => runtimeListeners.includes(listener),
+        hasListeners: () => runtimeListeners.length > 0
+      } as typeof chrome.runtime.onMessage,
       sendMessage: (message: unknown) => {
         sentMessages.push(message);
         if (!options?.sendMessage) {
@@ -68,6 +108,25 @@ export function installMockChrome(options?: {
           callback?.();
         }
       }
+    },
+    tabs: {
+      sendMessage: (
+        tabId: number,
+        message: unknown,
+        optionsArg?: chrome.tabs.MessageSendOptions
+      ) => {
+        tabMessages.push({
+          tabId,
+          message,
+          options: optionsArg
+        });
+
+        if (!options?.tabsSendMessage) {
+          return Promise.resolve(undefined);
+        }
+
+        return options.tabsSendMessage(tabId, message, optionsArg);
+      }
     }
   } as unknown as typeof chrome;
 
@@ -77,6 +136,26 @@ export function installMockChrome(options?: {
   return {
     storageState,
     sentMessages,
+    tabMessages,
+    emitRuntimeMessage: async (
+      message: unknown,
+      sender: chrome.runtime.MessageSender = {}
+    ) => {
+      await Promise.all(
+        runtimeListeners.map(
+          (listener) =>
+            new Promise<void>((resolve) => {
+              const sendResponse = () => {
+                resolve();
+              };
+              const handled = listener(message, sender, sendResponse);
+              if (!handled) {
+                resolve();
+              }
+            })
+        )
+      );
+    },
     restore: () => {
       (globalThis as typeof globalThis & { chrome?: typeof chrome }).chrome =
         originalChrome;
