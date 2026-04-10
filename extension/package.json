@@ -6,11 +6,13 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/**/*.test.ts"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.40",
     "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8"
   }

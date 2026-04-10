@@ -70,16 +70,16 @@ This document should be updated during implementation rather than treated as a s
 
 ### Batch 4: Settings Surface
 
-- [ ] Build the options page entrypoint and basic UI
-- [ ] Load selected model and models list through the worker
-- [ ] Save selected model through `settings.setSelectedModel`
-- [ ] Surface stable loading and save-failure states
-- [ ] Render stale-cache diagnostics only as convenience information when live loading fails
-- [ ] Verify valid selected model persists across browser restart
-- [ ] Verify stale selections are rejected with `selected_model_unavailable`
-- [ ] Verify stale-cache diagnostics never authorize a selected-model write
-- [ ] Perform phase alignment review for options-page settings behavior
-- [ ] Update `docs/plans/project-progress.md`
+- [x] Build the options page entrypoint and basic UI
+- [x] Load selected model and models list through the worker
+- [x] Save selected model through `settings.setSelectedModel`
+- [x] Surface stable loading and save-failure states
+- [x] Render stale-cache diagnostics only as convenience information when live loading fails
+- [x] Verify valid selected model persists across browser restart
+- [x] Verify stale selections are rejected with `selected_model_unavailable`
+- [x] Verify stale-cache diagnostics never authorize a selected-model write
+- [x] Perform phase alignment review for options-page settings behavior
+- [x] Update `docs/plans/project-progress.md`
 
 ### Batch 5: In-Page Shell and Selection Snapshot
 

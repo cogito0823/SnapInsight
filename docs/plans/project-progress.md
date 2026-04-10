@@ -25,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: `Batch 3` completed
-- Current execution point: `Batch 3: Worker HTTP and Validated Persistence` is complete; `Batch 4` is next
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, and worker-owned localhost and validated settings paths are now in place
+- Current overall status: `Batch 4` completed
+- Current execution point: `Batch 4: Settings Surface` is complete; `Batch 5` is next
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, worker-owned localhost and validated settings paths, and the options-page settings surface are now in place
 
 ## 3. Completed
 
@@ -83,6 +83,21 @@ This document should be updated as implementation progresses. It complements `do
 - Completed: implemented `GET /v1/models` with normalized `ready` and `no_models_available` states plus retryable failure mapping
 - Completed: added focused server tests covering health identity, model-list normalization, upstream-failure mapping, and origin-validation configuration rules
 
+### 3.7 Batch 3 Worker HTTP and Validated Persistence
+
+- Completed: implemented worker-side local API clients for health and models plus shared transport, timeout, and wrong-service normalization
+- Completed: implemented worker handlers for `health.check`, `models.list`, `settings.getSelectedModel`, and `settings.setSelectedModel`
+- Completed: added worker-owned settings storage helpers and a single validated selected-model persistence path
+- Completed: verified that localhost access remains isolated to `extension/src/worker/local-api/`
+
+### 3.8 Batch 4 Settings Surface
+
+- Completed: implemented the options-page local state model, startup wiring, and persistent settings UI
+- Completed: implemented worker-backed selected-model loading and live model-list loading
+- Completed: implemented worker-backed selected-model save with normalized save-error handling
+- Completed: implemented stale-cache diagnostics that render only when live model loading fails
+- Completed: added focused extension tests covering settings persistence, stale-model rejection, and non-authoritative stale-cache fallback behavior
+
 ## 4. In Progress
 
 - None currently recorded
@@ -91,14 +106,14 @@ This document should be updated as implementation progresses. It complements `do
 
 ### Immediate Next Actions
 
-- Begin `Batch 4: Settings Surface`
-- Reuse the completed worker-backed health, model-list, and validated selected-model flows from `Batch 3`
-- Implement the options page on top of the established worker-owned persistence path
+- Begin `Batch 5: In-Page Shell and Selection Snapshot`
+- Reuse the completed worker-backed settings and model-selection path for later blocked in-card model picking
+- Implement content-script selection detection, anchor computation, and accepted interaction snapshot state
 
 ### First Coding Targets
 
-- Next target: `Batch 4: Settings Surface`
-- Planned focus: options-page view state, worker-backed model loading, selected-model saving, and stable settings-surface error presentation
+- Next target: `Batch 5: In-Page Shell and Selection Snapshot`
+- Planned focus: selection readers, `1-20` counting helpers, anchor computation, page-local state, and Shadow DOM trigger/card shell wiring
 
 ## 6. Current Batch Tracking
 
@@ -161,8 +176,15 @@ Review note:
 
 ### Batch 4: Settings Surface
 
-- Status: Not started
+- Status: Completed
 - Goal: deliver a usable options page on top of the validated worker path
+
+Review note:
+
+- Implemented the options page as a worker-backed settings surface with local view state for selected-model draft, loading, save status, and diagnostic stale-cache fields
+- Wired initial load through `settings.getSelectedModel` and `models.list`, wired save through `settings.setSelectedModel`, and kept stale-cache display explicitly non-authoritative
+- Verified the batch with focused extension tests, extension type-check, production build, lint inspection, and source checks confirming that the options page saves only through the worker message contract and contains no direct localhost HTTP access
+- Alignment result: the settings surface now matches the approved options-page implementation design, extension-state spec rules for worker-backed persistence, and API-spec message-contract usage required for `Batch 4`
 
 ### Batch 5: In-Page Shell and Selection Snapshot
 
