@@ -125,7 +125,7 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 4. In Progress
 
-- In progress: no active implementation batch; `Batch 8` closure and verification are complete
+- In progress: no active implementation batch; the post-`Batch 8` card reading-experience polish pass has completed and the baseline is stable again
 
 ## 5. Next Up
 
@@ -136,7 +136,7 @@ This document should be updated as implementation progresses. It complements `do
 
 ### First Coding Targets
 
-- Current target: none; the current baseline is the completed `Batch 8` release-ready build
+- Current target: none; the current baseline includes the post-`Batch 8` card reading-experience polish on top of the completed release-ready build
 - Active focus: preserve the documented worker-only localhost boundary and hybrid trust contract in future changes
 
 ## 6. Current Batch Tracking
@@ -347,3 +347,4 @@ Avoid vague entries such as:
 - Recorded `Batch 8` completion, including the dedicated single-file content-script build, the hybrid localhost trust boundary, focused worker and server trust-path coverage, refreshed automated verification, and real-browser confirmation that options-page model loading and in-page trigger or card activation are restored.
 - Recorded a post-closure follow-up fix for real-use regressions: content-card actions now tolerate active native selection without losing press handling, the Ollama adapter now uses the chat streaming path with `think: false`, and real-browser verification now confirms visible short-explanation text reaches the card for `qwen3.5:0.8b`.
 - Recorded a follow-up content-card readability fix: the card body now scrolls within a viewport-bounded shell for long detailed explanations, the response renderer now converts common markdown blocks and inline styles into formatted HTML, and focused rendering coverage was added before rebuilding the extension bundle.
+- Recorded a focused reading-experience polish pass on the in-page card: the card width was increased moderately for better Chinese line length, the top bar was simplified by removing the product-name title, short and detailed sections now use distinct label styling and softer reading surfaces, and focused rendering tests plus a rebuild confirmed the updated presentation layer.

@@ -66,23 +66,6 @@ function createInitialViewState(): ContentViewState {
   };
 }
 
-function clearNativeSelectionAfterCardOpen(): void {
-  const activeElement = document.activeElement;
-
-  if (
-    activeElement instanceof HTMLInputElement ||
-    activeElement instanceof HTMLTextAreaElement
-  ) {
-    const end = activeElement.selectionEnd;
-    if (end !== null) {
-      activeElement.setSelectionRange(end, end);
-    }
-    return;
-  }
-
-  window.getSelection()?.removeAllRanges();
-}
-
 export function startContentApp(): void {
   if (document.documentElement.hasAttribute(CONTENT_APP_MARKER)) {
     return;
@@ -173,7 +156,6 @@ export function startContentApp(): void {
           rotateInteractionVersion();
           resetViewState();
           state = next.state;
-          clearNativeSelectionAfterCardOpen();
           render();
           void startShortExplanation();
         },
@@ -392,7 +374,7 @@ export function startContentApp(): void {
       ...viewState,
       modelPicker: {
         phase: "ready",
-          targetArea,
+        targetArea,
         options: response.data.models,
         selectedModel: response.data.models[0]?.id ?? null,
         error: null

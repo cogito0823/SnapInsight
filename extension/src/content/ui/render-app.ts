@@ -5,7 +5,7 @@ import type { ModelSummary } from "../../shared/models/model-summary";
 import { renderMarkdownToHtml } from "./markdown";
 
 const TRIGGER_SIZE = 28;
-const CARD_WIDTH = 320;
+const CARD_WIDTH = 456;
 const CARD_GAP = 10;
 
 export interface RenderCallbacks {
@@ -135,7 +135,6 @@ function renderCard(state: ContentCardState): string {
       state.selectionAnchorRect
     )}">
       <header class="snapinsight-card-header">
-        <div class="snapinsight-card-title">SnapInsight</div>
         <button id="snapinsight-close" type="button" aria-label="关闭卡片">×</button>
       </header>
       <div class="snapinsight-card-selection">${selectionText}</div>
@@ -154,6 +153,13 @@ function renderLoadingState(message: string): string {
       <div>${escapeHtml(message)}</div>
     </div>
   `;
+}
+
+function renderSectionLabel(
+  text: string,
+  tone: "short" | "detail"
+): string {
+  return `<div class="snapinsight-section-label snapinsight-section-label--${tone}">${text}</div>`;
 }
 
 function describeError(error: ExtensionError): string {
@@ -305,7 +311,7 @@ function renderShortSection(
   if (request.phase === "streaming" || request.phase === "completed") {
     return `
       <div class="snapinsight-short-section">
-        <div class="snapinsight-section-label">简短解释</div>
+        ${renderSectionLabel("简短解释", "short")}
         ${renderResponseContent(request.textBuffer, "正在生成解释...")}
         ${
           request.phase === "streaming"
@@ -350,7 +356,7 @@ function renderDetailAction(state: ContentCardState): string {
     <button
       id="snapinsight-expand-detail"
       type="button"
-      class="snapinsight-secondary-button"
+      class="snapinsight-secondary-button snapinsight-detail-action"
       ${canExpand ? "" : "disabled"}
     >
       查看更多
@@ -371,7 +377,7 @@ function renderDetailSection(
   if (viewState.detailDispatchPending || request.phase === "starting") {
     return `
       <div class="snapinsight-detail-section">
-        <div class="snapinsight-section-label">详细解释</div>
+        ${renderSectionLabel("详细解释", "detail")}
         ${renderLoadingState("正在生成更完整的解释...")}
       </div>
     `;
@@ -380,7 +386,7 @@ function renderDetailSection(
   if (request.phase === "streaming" || request.phase === "completed") {
     return `
       <div class="snapinsight-detail-section">
-        <div class="snapinsight-section-label">详细解释</div>
+        ${renderSectionLabel("详细解释", "detail")}
         ${renderResponseContent(request.textBuffer, "正在生成更完整的解释...")}
         ${
           request.phase === "streaming"
@@ -395,7 +401,7 @@ function renderDetailSection(
     if (request.errorState.code === "selected_model_unavailable") {
       return `
         <div class="snapinsight-detail-section">
-          <div class="snapinsight-section-label">详细解释</div>
+          ${renderSectionLabel("详细解释", "detail")}
           ${renderModelPicker(viewState.modelPicker)}
         </div>
       `;
@@ -403,7 +409,7 @@ function renderDetailSection(
 
     return `
       <div class="snapinsight-detail-section">
-        <div class="snapinsight-section-label">详细解释</div>
+        ${renderSectionLabel("详细解释", "detail")}
         <div class="snapinsight-blocked-state">
           ${
             request.textBuffer
@@ -421,7 +427,7 @@ function renderDetailSection(
 
   return `
     <div class="snapinsight-detail-section">
-      <div class="snapinsight-section-label">详细解释</div>
+      ${renderSectionLabel("详细解释", "detail")}
       ${renderLoadingState("点击查看更多后会在这里展开详细解释。")}
     </div>
   `;
@@ -477,24 +483,18 @@ export function renderContentApp(
         flex-direction: column;
         box-sizing: border-box;
         border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 14px;
+        border-radius: 16px;
         background: #fff;
         color: #0f172a;
-        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+        box-shadow: 0 20px 48px rgba(15, 23, 42, 0.16);
         max-height: min(720px, calc(100vh - 16px));
-        padding: 14px;
+        padding: 12px 14px 14px;
       }
 
       .snapinsight-card-header {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 10px;
-      }
-
-      .snapinsight-card-title {
-        font-size: 14px;
-        font-weight: 700;
+        justify-content: flex-end;
+        margin-bottom: 6px;
       }
 
       #snapinsight-close {
@@ -504,25 +504,34 @@ export function renderContentApp(
         cursor: pointer;
         font-size: 18px;
         line-height: 1;
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
         padding: 0;
       }
 
+      #snapinsight-close:hover {
+        background: #f1f5f9;
+        color: #334155;
+      }
+
       .snapinsight-card-selection {
-        border-radius: 10px;
-        background: #eff6ff;
+        border: 1px solid rgba(37, 99, 235, 0.12);
+        border-radius: 12px;
+        background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
         color: #1d4ed8;
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 600;
-        margin-bottom: 10px;
-        padding: 8px 10px;
+        margin-bottom: 12px;
+        padding: 10px 12px;
         word-break: break-word;
       }
 
       .snapinsight-card-body {
         color: #334155;
         flex: 1;
-        font-size: 13px;
-        line-height: 1.5;
+        font-size: 14px;
+        line-height: 1.6;
         min-height: 0;
         overflow-y: auto;
         padding-right: 4px;
@@ -532,30 +541,53 @@ export function renderContentApp(
       .snapinsight-detail-section {
         display: grid;
         gap: 8px;
+        border-radius: 14px;
+        padding: 12px;
+      }
+
+      .snapinsight-short-section {
+        background: rgba(239, 246, 255, 0.55);
       }
 
       .snapinsight-detail-section {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid rgba(148, 163, 184, 0.2);
+        margin-top: 14px;
+        background: rgba(248, 250, 252, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.16);
       }
 
       .snapinsight-section-label {
-        color: #0f172a;
-        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-self: start;
+        border-radius: 999px;
+        font-size: 11px;
         font-weight: 700;
-        margin-bottom: 6px;
+        letter-spacing: 0.02em;
+        margin-bottom: 2px;
+        padding: 4px 9px;
+      }
+
+      .snapinsight-section-label--short {
+        background: rgba(37, 99, 235, 0.12);
+        color: #1d4ed8;
+      }
+
+      .snapinsight-section-label--detail {
+        background: rgba(124, 58, 237, 0.12);
+        color: #6d28d9;
       }
 
       .snapinsight-response-text {
         color: #0f172a;
-        line-height: 1.6;
+        font-size: 14px;
+        line-height: 1.7;
         white-space: pre-wrap;
         word-break: break-word;
       }
 
       .snapinsight-response-markdown {
         color: #0f172a;
+        font-size: 14px;
         line-height: 1.7;
         word-break: break-word;
       }
@@ -694,13 +726,13 @@ export function renderContentApp(
 
       .snapinsight-primary-button,
       .snapinsight-secondary-button {
-        border-radius: 10px;
+        border-radius: 12px;
         cursor: pointer;
         font: inherit;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
-        min-height: 34px;
-        padding: 0 12px;
+        min-height: 36px;
+        padding: 0 14px;
       }
 
       .snapinsight-primary-button {
@@ -721,6 +753,10 @@ export function renderContentApp(
         background: #eff6ff;
         color: #1d4ed8;
         justify-self: start;
+      }
+
+      .snapinsight-detail-action {
+        margin-top: 4px;
       }
 
       .snapinsight-inline-error {

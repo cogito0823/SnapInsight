@@ -361,3 +361,67 @@ test("detail markdown content renders formatted blocks inside scrollable card bo
     restoreWindow();
   }
 });
+
+test("card polish removes plugin title and uses distinct section label variants", () => {
+  const root = createMockRoot();
+  const restoreWindow = installMockWindow();
+  const shortRequestState = applyChunkToRequestState(
+    applyForwardedStartEvent(createStartingRequestState("short", "req-short"), {
+      event: "start",
+      requestId: "req-short",
+      mode: "short",
+      model: "llama3.1:8b"
+    }),
+    "简短解释。"
+  );
+  const detailRequestState = applyChunkToRequestState(
+    applyForwardedStartEvent(createStartingRequestState("detailed", "req-detail"), {
+      event: "start",
+      requestId: "req-detail",
+      mode: "detailed",
+      model: "llama3.1:8b"
+    }),
+    "详细解释。"
+  );
+
+  try {
+    renderContentApp(
+      root,
+      {
+        ...createOpenState(),
+        detailExpanded: true,
+        shortRequestState,
+        detailRequestState
+      },
+      {
+        anchorRect: null
+      },
+      {
+        shortDispatchPending: false,
+        detailDispatchPending: false,
+        modelPicker: {
+          phase: "idle",
+          targetArea: null,
+          options: [],
+          selectedModel: null,
+          error: null
+        }
+      },
+      {
+        onTriggerHover: () => {},
+        onCloseCard: () => {},
+        onRetryShort: () => {},
+        onExpandDetail: () => {},
+        onRetryDetail: () => {},
+        onModelSelectionChange: () => {},
+        onSaveModelSelection: () => {}
+      }
+    );
+
+    assert.doesNotMatch(root.innerHTML, />SnapInsight</);
+    assert.match(root.innerHTML, /snapinsight-section-label--short/);
+    assert.match(root.innerHTML, /snapinsight-section-label--detail/);
+  } finally {
+    restoreWindow();
+  }
+});
