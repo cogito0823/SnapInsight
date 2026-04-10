@@ -25,9 +25,9 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 2. Current Status Summary
 
-- Current overall status: `Batch 2` completed
-- Current execution point: `Batch 2: Local Service Foundation` is complete; `Batch 3` is next
-- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, and the local-service baseline for health and model-list handling are now in place
+- Current overall status: `Batch 3` completed
+- Current execution point: `Batch 3: Worker HTTP and Validated Persistence` is complete; `Batch 4` is next
+- Current implementation state: Core product, architecture, API, state, and implementation-design documents are in place and approved where required for implementation start; the initial repository scaffold, runtime entrypoints, shared runtime contracts, local-service baseline, and worker-owned localhost and validated settings paths are now in place
 
 ## 3. Completed
 
@@ -91,14 +91,14 @@ This document should be updated as implementation progresses. It complements `do
 
 ### Immediate Next Actions
 
-- Begin `Batch 3: Worker HTTP and Validated Persistence`
-- Reuse the completed local-service baseline as the worker's only localhost dependency
-- Implement worker health, models, and selected-model validation flows against the established server contract
+- Begin `Batch 4: Settings Surface`
+- Reuse the completed worker-backed health, model-list, and validated selected-model flows from `Batch 3`
+- Implement the options page on top of the established worker-owned persistence path
 
 ### First Coding Targets
 
-- Next target: `Batch 3: Worker HTTP and Validated Persistence`
-- Planned focus: worker local-API clients, `health.check`, `models.list`, `settings.getSelectedModel`, and validated selected-model persistence
+- Next target: `Batch 4: Settings Surface`
+- Planned focus: options-page view state, worker-backed model loading, selected-model saving, and stable settings-surface error presentation
 
 ## 6. Current Batch Tracking
 
@@ -149,8 +149,15 @@ Review note:
 
 ### Batch 3: Worker HTTP and Validated Persistence
 
-- Status: Not started
+- Status: Completed
 - Goal: make the worker the only local-service caller and the owner of validated model persistence
+
+Review note:
+
+- Implemented worker-side local API clients for `GET /health` and `GET /v1/models`, including fixed-port identity verification, transport and timeout normalization, and explicit message-handler dispatch
+- Added worker-owned settings storage helpers and a settings service so `settings.getSelectedModel` and `settings.setSelectedModel` now go through one authoritative persistence path backed by live model validation
+- Verified the batch with extension type-check and production build, confirmed the localhost base URL only exists under `extension/src/worker/local-api/`, and checked that timeout and wrong-service paths normalize to the documented public error families in the worker code
+- Alignment result: the worker baseline now matches the approved worker implementation design, API-spec internal message contracts, and state-spec persistence rules required for `Batch 3`; explanation streaming handlers remain intentionally deferred to later batches
 
 ### Batch 4: Settings Surface
 

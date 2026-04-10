@@ -56,17 +56,17 @@ This document should be updated during implementation rather than treated as a s
 
 ### Batch 3: Worker HTTP and Validated Persistence
 
-- [ ] Implement worker handlers for `health.check`
-- [ ] Implement worker handlers for `models.list`
-- [ ] Implement worker handlers for `settings.getSelectedModel`
-- [ ] Implement worker handlers for selected-model validation and persistence
-- [ ] Persist selected model only after live validation
-- [ ] Persist model cache and last refresh time only as non-authoritative diagnostics
-- [ ] Verify content script still has no direct localhost access path
-- [ ] Verify wrong-service identity maps to `local_service_conflict`
-- [ ] Verify timeout outcomes normalize to retryable `request_failed`
-- [ ] Perform phase alignment review for worker HTTP and settings ownership
-- [ ] Update `docs/plans/project-progress.md`
+- [x] Implement worker handlers for `health.check`
+- [x] Implement worker handlers for `models.list`
+- [x] Implement worker handlers for `settings.getSelectedModel`
+- [x] Implement worker handlers for selected-model validation and persistence
+- [x] Persist selected model only after live validation
+- [x] Persist model cache and last refresh time only as non-authoritative diagnostics
+- [x] Verify content script still has no direct localhost access path
+- [x] Verify wrong-service identity maps to `local_service_conflict`
+- [x] Verify timeout outcomes normalize to retryable `request_failed`
+- [x] Perform phase alignment review for worker HTTP and settings ownership
+- [x] Update `docs/plans/project-progress.md`
 
 ### Batch 4: Settings Surface
 
