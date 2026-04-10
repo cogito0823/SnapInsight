@@ -4,7 +4,7 @@ SnapInsight is a Chrome extension that provides instant, layered explanations fo
 
 ## What It Looks Like
 
-![SnapInsight in-page card example](docs/assets/readme-in-page-card.png)
+![SnapInsight in-page card example](docs/assets/readme-in-page-card-example.png)
 
 The current in-page experience is:
 
