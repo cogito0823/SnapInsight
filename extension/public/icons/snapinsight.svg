@@ -1,16 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SnapInsight">
   <defs>
-    <linearGradient id="background" x1="18" y1="12" x2="110" y2="116" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#176BFF"/>
-      <stop offset="1" stop-color="#093BCB"/>
+    <linearGradient id="blue" x1="22" y1="18" x2="108" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1978FF"/>
+      <stop offset="0.52" stop-color="#0755EE"/>
+      <stop offset="1" stop-color="#0638C7"/>
     </linearGradient>
+    <radialGradient id="depth" cx="0" cy="0" r="1" gradientTransform="translate(61 61) rotate(90) scale(48)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071E88" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#071E88" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="128" height="128" rx="30" fill="url(#background)"/>
-  <circle cx="55" cy="54" r="34" fill="none" stroke="#FFFFFF" stroke-width="12"/>
-  <path d="M27 70v22l22-15Z" fill="url(#background)"/>
-  <path d="M79 78 103 102" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round"/>
-  <path d="M96 95 104 103" fill="none" stroke="#49E7C2" stroke-width="14" stroke-linecap="round"/>
-  <circle cx="43" cy="54" r="4.5" fill="#49E7C2"/>
-  <circle cx="56" cy="54" r="4.5" fill="#49E7C2"/>
-  <circle cx="69" cy="54" r="4.5" fill="#49E7C2"/>
+
+  <!-- Chrome Web Store recommends a 96 px square with 16 px transparent padding. -->
+  <rect x="16" y="16" width="96" height="96" rx="24" fill="url(#blue)"/>
+  <rect x="16" y="16" width="96" height="96" rx="24" fill="url(#depth)"/>
+
+  <!-- Magnifying glass ring. -->
+  <circle cx="58" cy="57" r="27" fill="none" stroke="#FFFFFF" stroke-width="10"/>
+
+  <!-- The reference concept uses a white speech-bubble tail inside the ring. -->
+  <path d="M35.5 72.5v16l15-11.5Z" fill="#FFFFFF"/>
+
+  <!-- Handle: white body with a mint end cap. -->
+  <path d="M77.5 76.5 97 96" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+  <path d="M91.5 90.5 98 97" fill="none" stroke="#43E6BE" stroke-width="12" stroke-linecap="round"/>
+
+  <circle cx="47" cy="57" r="3.7" fill="#43E6BE"/>
+  <circle cx="58" cy="57" r="3.7" fill="#43E6BE"/>
+  <circle cx="69" cy="57" r="3.7" fill="#43E6BE"/>
 </svg>
