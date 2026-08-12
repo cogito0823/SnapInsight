@@ -5,6 +5,7 @@ import {
 } from "./status-banner";
 import { renderStaleCacheNote } from "./stale-cache-note";
 import type { OptionsState } from "../state/options-state";
+import { isChromePromptExperiment } from "../../shared/config/inference-provider";
 
 export function renderOptionsPage(state: OptionsState): string {
   const canSave =
@@ -44,6 +45,14 @@ export function renderOptionsPage(state: OptionsState): string {
         </header>
 
         <section style="display:flex; flex-direction:column; gap:16px;">
+          ${
+            isChromePromptExperiment
+              ? `<div style="padding:14px; border-radius:12px; background:#eff6ff; color:#1e3a8a; line-height:1.6;">
+                  当前构建启用了 Chrome Prompt API 实验后端。
+                  <a href="prompt-api-lab.html" style="color:#1d4ed8; font-weight:600;">打开 Prompt API Lab</a>
+                </div>`
+              : ""
+          }
           ${liveLoadMessage}
           ${saveBanner}
 

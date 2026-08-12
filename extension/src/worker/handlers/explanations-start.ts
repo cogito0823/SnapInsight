@@ -2,8 +2,12 @@ import type {
   ExplanationsStartMessage,
   ExplanationsStartResponse
 } from "../../shared/contracts/messages";
-import { createExtensionError } from "../../shared/errors/error-codes";
+import {
+  createExtensionError,
+  type ExtensionError
+} from "../../shared/errors/error-codes";
 import type { SenderContext } from "../../shared/state/request-types";
+import { inferenceProvider } from "../../shared/config/inference-provider";
 import { registerActiveStream } from "../bridge/active-stream-registry";
 import { forwardExplanationStream } from "../bridge/stream-forwarder";
 import {
@@ -13,6 +17,7 @@ import {
 import { mapLocalApiError } from "../local-api/error-mapping";
 import { fetchModelCatalog } from "../local-api/models-client";
 import { settingsService } from "../settings/settings-service";
+import { openPromptExplanationStream } from "../prompt-api/host-client";
 
 function resolveSenderContext(
   message: ExplanationsStartMessage,
@@ -67,6 +72,51 @@ export async function handleExplanationsStart(
         false
       )
     };
+  }
+
+  if (inferenceProvider === "chrome-prompt") {
+    try {
+      const streamConnection = await openPromptExplanationStream({
+        requestId,
+        text,
+        mode: message.payload.mode
+      });
+      registerActiveStream(requestId, {
+        senderContext,
+        cancel: streamConnection.cancel
+      });
+      void forwardExplanationStream({
+        requestId,
+        senderContext,
+        events: streamConnection.events
+      });
+      return {
+        ok: true,
+        data: { requestId }
+      };
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        "message" in error &&
+        "retryable" in error
+      ) {
+        return {
+          ok: false,
+          error: error as ExtensionError
+        };
+      }
+
+      return {
+        ok: false,
+        error: createExtensionError(
+          "service_unavailable",
+          "Chrome Prompt API could not be started in this extension.",
+          true
+        )
+      };
+    }
   }
 
   let effectiveModel = message.payload.model?.trim() ?? "";

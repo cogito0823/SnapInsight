@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build && vite build --config vite.content.config.ts",
+    "build:prompt": "SNAPINSIGHT_INFERENCE_PROVIDER=chrome-prompt npm run build",
     "dev": "sh -c 'vite build --watch & vite build --config vite.content.config.ts --watch'",
     "check": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts"

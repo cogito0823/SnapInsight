@@ -186,6 +186,15 @@ npm run check
 npm run build
 ```
 
+Experimental Chrome Prompt API build:
+
+```bash
+cd extension
+npm run build:prompt
+```
+
+Load `extension/dist`, open the extension options page, and use `打开 Prompt API Lab` to prepare the browser-managed model and run the English/Chinese feasibility cases. This path is experimental; Ollama remains the default build backend. See `docs/discovery/chrome-prompt-api-validation.md` for the latest findings and known limitations.
+
 ### Server
 
 ```bash

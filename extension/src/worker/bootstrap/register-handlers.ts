@@ -16,7 +16,15 @@ function isWorkerMessage(value: unknown): value is WorkerMessage {
     return false;
   }
 
-  return typeof (value as { type?: unknown }).type === "string";
+  const type = (value as { type?: unknown }).type;
+  return (
+    type === "health.check" ||
+    type === "models.list" ||
+    type === "settings.getSelectedModel" ||
+    type === "settings.setSelectedModel" ||
+    type === "explanations.start" ||
+    type === "explanations.cancel"
+  );
 }
 
 async function handleWorkerMessage(

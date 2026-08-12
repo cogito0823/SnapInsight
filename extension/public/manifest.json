@@ -3,7 +3,8 @@
   "name": "SnapInsight",
   "version": "0.1.0",
   "description": "Local AI explanations for selected text.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "offscreen"],
+  "minimum_chrome_version": "138",
   "host_permissions": ["http://127.0.0.1:11435/*"],
   "background": {
     "service_worker": "worker.js",
