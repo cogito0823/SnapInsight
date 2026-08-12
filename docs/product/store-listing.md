@@ -5,7 +5,7 @@
 - 名称：SnapInsight — On-device AI Explanations
 - 分类：生产力工具
 - 语言：中文（简体）
-- 版本：0.2.3
+- 版本：0.2.4
 
 ## 简短描述
 
