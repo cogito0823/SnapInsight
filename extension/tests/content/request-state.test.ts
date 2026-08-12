@@ -77,7 +77,7 @@ test("error state preserves partial content when streaming fails after chunks", 
 
 test("startup rejection can move directly from idle-equivalent setup into error", () => {
   const errored = createErroredRequestState("short", "req-4", {
-    code: "selected_model_unavailable",
+      code: "model_download_required",
     message: "A valid model must be selected before explanation can start.",
     retryable: false
   });

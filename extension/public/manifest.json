@@ -1,14 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "SnapInsight",
-  "version": "0.1.0",
-  "description": "Local AI explanations for selected text.",
-  "permissions": ["storage", "offscreen"],
+  "name": "SnapInsight — Chrome 本地 AI 解释",
+  "short_name": "SnapInsight",
+  "version": "0.2.0",
+  "description": "使用 Chrome 设备端 AI 即时解释选中文字，不上传网页内容。",
   "minimum_chrome_version": "138",
-  "host_permissions": ["http://127.0.0.1:11435/*"],
   "background": {
     "service_worker": "worker.js",
     "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
   "content_scripts": [
     {
@@ -17,8 +22,15 @@
       "run_at": "document_idle"
     }
   ],
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "action": {
-    "default_title": "SnapInsight"
+    "default_title": "打开 SnapInsight 设备状态",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
   }
 }

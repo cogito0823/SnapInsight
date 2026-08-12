@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SnapInsight">
+  <defs>
+    <linearGradient id="background" x1="18" y1="12" x2="110" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="url(#background)"/>
+  <path d="M31 92c11 0 19-6 19-15 0-11-9-14-18-17-7-2-11-4-11-8 0-4 4-7 10-7 6 0 11 2 16 6l8-11c-7-6-15-9-24-9-15 0-25 9-25 22 0 14 10 18 21 21 6 2 9 4 9 7 0 4-4 7-11 7-8 0-14-3-20-8L0 91c8 7 19 11 31 11Z" fill="#FFFFFF" transform="translate(17 -3) scale(.72)"/>
+  <rect x="67" y="32" width="16" height="64" rx="8" fill="#FFFFFF"/>
+  <circle cx="96" cy="42" r="9" fill="#93C5FD"/>
+</svg>

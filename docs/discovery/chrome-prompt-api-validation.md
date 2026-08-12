@@ -63,3 +63,7 @@ An earlier run in the app's embedded browser returned `unavailable` with `NotSup
 ## Go / No-Go Rule
 
 The feasibility gate is passed, but do not replace the Ollama path yet. Compare these results against the existing Ollama baseline and validate the extension-document lifecycle in the unpacked extension. Proceed only if target-language quality, first-token latency, supported-device coverage, and lifecycle behavior are acceptable.
+
+## 2026-08-13 Follow-up
+
+The later productization pass replaced this spike architecture. A real Chrome probe confirmed that `LanguageModel` is exposed in the Content Script isolated world (`availability()` returned `available`, and `create()` plus `prompt()` returned the expected result) while remaining absent from the page's main world. Production code now runs Prompt API sessions directly in the Content Script and no longer uses Offscreen Document or the `WORKERS` reason. The sections above remain as the historical spike record.

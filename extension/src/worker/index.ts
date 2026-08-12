@@ -1,3 +1,3 @@
-import { registerMessageHandlers } from "./bootstrap/register-handlers";
+import { registerProductEntrypoints } from "./bootstrap/register-product-entrypoints";
 
-registerMessageHandlers();
+registerProductEntrypoints();

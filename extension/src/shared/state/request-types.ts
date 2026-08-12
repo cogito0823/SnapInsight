@@ -1,5 +1,4 @@
 import type { ExtensionError } from "../errors/error-codes";
-import type { ModelSummary } from "../models/model-summary";
 
 export type SelectionMode = "short" | "detailed";
 
@@ -29,15 +28,3 @@ export interface ExplanationRequestState {
   startedAt: string | null;
   updatedAt: string | null;
 }
-
-export interface ExtensionSettings {
-  selectedModel: string | null;
-  lastKnownModels: ModelSummary[];
-  lastModelRefreshAt: string | null;
-}
-
-export const STORAGE_KEYS = {
-  selectedModel: "settings.selectedModel",
-  lastKnownModels: "settings.lastKnownModels",
-  lastModelRefreshAt: "settings.lastModelRefreshAt"
-} as const;

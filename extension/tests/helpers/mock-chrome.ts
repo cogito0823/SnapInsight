@@ -41,6 +41,10 @@ export function installMockChrome(options?: {
       sendResponse: (response?: unknown) => void
     ) => boolean | void
   > = [];
+  const installedListeners: Array<
+    (details: chrome.runtime.InstalledDetails) => void
+  > = [];
+  const actionListeners: Array<(tab: chrome.tabs.Tab) => void> = [];
   const originalChrome = (globalThis as typeof globalThis & { chrome?: typeof chrome })
     .chrome;
 
@@ -49,10 +53,10 @@ export function installMockChrome(options?: {
       id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       lastError: undefined as chrome.runtime.LastError | undefined,
       onMessage: {
-        addListener: (listener) => {
+        addListener: (listener: (message: unknown, sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => boolean | void) => {
           runtimeListeners.push(listener);
         },
-        removeListener: (listener) => {
+        removeListener: (listener: (message: unknown, sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => boolean | void) => {
           const index = runtimeListeners.indexOf(listener);
           if (index >= 0) {
             runtimeListeners.splice(index, 1);
@@ -61,6 +65,20 @@ export function installMockChrome(options?: {
         hasListener: (listener) => runtimeListeners.includes(listener),
         hasListeners: () => runtimeListeners.length > 0
       } as typeof chrome.runtime.onMessage,
+      onInstalled: {
+        addListener: (listener: (details: chrome.runtime.InstalledDetails) => void) => {
+          installedListeners.push(listener);
+        },
+        removeListener: (listener: (details: chrome.runtime.InstalledDetails) => void) => {
+          const index = installedListeners.indexOf(listener);
+          if (index >= 0) installedListeners.splice(index, 1);
+        },
+        hasListener: (listener: (details: chrome.runtime.InstalledDetails) => void) =>
+          installedListeners.includes(listener),
+        hasListeners: () => installedListeners.length > 0
+      } as unknown as typeof chrome.runtime.onInstalled,
+      getURL: (path: string) => `chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/${path}`,
+      openOptionsPage: async () => undefined,
       sendMessage: (message: unknown) => {
         sentMessages.push(message);
         if (!options?.sendMessage) {
@@ -68,6 +86,20 @@ export function installMockChrome(options?: {
         }
 
         return options.sendMessage(message);
+      }
+    },
+    action: {
+      onClicked: {
+        addListener: (listener: (tab: chrome.tabs.Tab) => void) => {
+          actionListeners.push(listener);
+        },
+        removeListener: (listener: (tab: chrome.tabs.Tab) => void) => {
+          const index = actionListeners.indexOf(listener);
+          if (index >= 0) actionListeners.splice(index, 1);
+        },
+        hasListener: (listener: (tab: chrome.tabs.Tab) => void) =>
+          actionListeners.includes(listener),
+        hasListeners: () => actionListeners.length > 0
       }
     },
     storage: {

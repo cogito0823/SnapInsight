@@ -12,6 +12,7 @@ __pycache__/
 build/
 companion/build-support/
 extension/dist/
+release/
 develop-eggs/
 dist/
 downloads/

@@ -6,11 +6,10 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: false,
     rollupOptions: {
-      input: resolve(__dirname, "src/content/index.ts"),
+      input: resolve(import.meta.dirname, "src/content/index.ts"),
       output: {
         entryFileNames: "content.js",
-        format: "iife",
-        inlineDynamicImports: true
+        format: "iife"
       }
     }
   }
