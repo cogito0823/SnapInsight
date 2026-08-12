@@ -2,10 +2,10 @@
 
 ## 基本信息
 
-- 名称：SnapInsight — Chrome 本地 AI 解释
+- 名称：SnapInsight — On-device AI Explanations
 - 分类：生产力工具
 - 语言：中文（简体）
-- 版本：0.2.0
+- 版本：0.2.1
 
 ## 简短描述
 

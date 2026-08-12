@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "SnapInsight — Chrome 本地 AI 解释",
+  "name": "SnapInsight — On-device AI Explanations",
   "short_name": "SnapInsight",
-  "version": "0.2.0",
-  "description": "使用 Chrome 设备端 AI 即时解释选中文字，不上传网页内容。",
+  "version": "0.2.1",
+  "description": "Instantly explain selected text with Chrome's on-device AI. Selected text stays on your device.",
   "minimum_chrome_version": "138",
   "background": {
     "service_worker": "worker.js",
@@ -27,7 +27,7 @@
     "open_in_tab": true
   },
   "action": {
-    "default_title": "打开 SnapInsight 设备状态",
+    "default_title": "Open SnapInsight device status",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
