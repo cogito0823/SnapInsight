@@ -67,7 +67,7 @@ SnapInsight 的唯一用途是在普通网页中读取用户明确选中的少�
 
 - 支持页面：https://github.com/cogito0823/SnapInsight/issues
 - 项目主页：https://github.com/cogito0823/SnapInsight
-- 隐私政策：发布后填写公开的 `privacy-policy.html` URL
+- 隐私政策：https://github.com/cogito0823/SnapInsight/blob/codex/prompt-api-productization/docs/product/privacy-policy.md
 
 ## 截图
 
