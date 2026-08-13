@@ -6,6 +6,7 @@ import {
 import {
   cancelPromptExplanation,
   disposePromptResources,
+  evictPromptKeeper,
   handlePromptPageVisibility,
   type PromptLoadingStage,
   startPromptExplanation,
@@ -13,6 +14,7 @@ import {
 } from "../prompt-api/prompt-client";
 import { createPromptWarmupScheduler } from "../prompt-api/prompt-warmup";
 import type { ExplanationEventMessage } from "../../shared/contracts/events";
+import { isPromptKeeperEvictMessage } from "../../shared/contracts/prompt-keeper";
 import { createExtensionError } from "../../shared/errors/error-codes";
 import { readSelection } from "../selection/read-selection";
 import { validateSelection } from "../selection/validate-selection";
@@ -100,6 +102,12 @@ export function startContentApp(): void {
   let pendingShortRequestId: string | null = null;
   let pendingDetailRequestId: string | null = null;
   const promptWarmupScheduler = createPromptWarmupScheduler(warmUpPromptModel);
+  const handleKeeperEviction = (message: unknown): void => {
+    if (!isPromptKeeperEvictMessage(message)) return;
+    if (message.payload.pageInstanceId !== state.senderContext.pageInstanceId) return;
+    evictPromptKeeper(message.payload.pageInstanceId);
+  };
+  chrome.runtime.onMessage.addListener(handleKeeperEviction);
 
   const cancelScheduledWarmup = (): void => promptWarmupScheduler.cancel();
 

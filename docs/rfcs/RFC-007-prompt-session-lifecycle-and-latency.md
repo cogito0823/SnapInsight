@@ -110,15 +110,21 @@ data, and they are not transmitted or persisted by default.
 ## Lifecycle Rules
 
 - A template that has served a real request has no ordinary idle TTL while its
-  document remains visible. It acts as the document's dedicated keeper.
+  document exists, including while hidden. It acts as the document's dedicated
+  keeper.
 - A template created only by warm-up gets an unused TTL of 15 seconds so casual
   selections do not retain the model indefinitely.
-- A hidden page retains an idle keeper for 5 minutes, allowing short tab or
-  application switches to stay warm, then releases it if still hidden.
+- Visibility changes update cross-page LRU metadata but do not start a local
+  disposal timer for a used keeper.
+- The Service Worker coordinates at most five used page keepers. It evicts the
+  least-recently-used hidden keeper first, or the least-recently-used keeper if
+  all candidates are visible.
+- The registry is stored in `chrome.storage.session` across Worker suspension.
+  It contains tab/frame runtime ids, a random page instance id, visibility, and
+  last-use order only; never URL, title, selected text, prompts, or output.
 - `pagehide` and document-instance navigation dispose the pool immediately.
 - A new request cancels pending idle disposal.
-- Returning to visibility cancels hidden-page disposal and restores keeper
-  retention for a template that has served a request.
+- An LRU-evicted page can recreate and register a keeper on its next request.
 - Quota failures invalidate the template and use a short retry backoff;
   invalid-session clone failures invalidate and rebuild the template once.
 - Availability results may be cached briefly, but create/clone failures always
@@ -142,13 +148,16 @@ architecture RFC.
 ## Consequences
 
 - Warm sequential explanations should avoid full template creation.
-- Long pauses on a still-visible document should remain on the warm path because
-  the document retains one unprompted keeper session.
+- Long pauses on a surviving document should remain on the warm path because
+  the document retains one unprompted keeper unless globally evicted or
+  invalidated by Chrome.
 - Browser restart can still produce a Chrome model-runtime cold start, but not a
   model re-download unless Chrome reports `downloadable` or `downloading`.
-- Multiple visible tabs can each own one keeper and hidden tabs retain theirs
-  for up to 5 minutes, so lifecycle cleanup and quota backoff are mandatory.
-- The Service Worker remains independent of inference latency and session state.
+- Multiple tabs can own keepers, bounded to five by extension-level LRU
+  coordination. Five is a SnapInsight resource guard, not a documented Chrome
+  Session quota.
+- The Service Worker remains independent of inference latency and Prompt API
+  session objects; it coordinates metadata and targeted eviction only.
 - Automated tests must verify balanced create/clone/destroy behavior, timeout
   cancellation, single-flight initialization, and lifecycle cleanup.
 
@@ -159,3 +168,6 @@ architecture RFC.
 - 2026-08-13: Revised keeper retention after real-device cold-start validation:
   used keepers remain alive while visible, hidden keepers use a 5-minute grace
   period, and no-clone request sessions never consume the keeper.
+- 2026-08-13: Replaced hidden-page timeout with document-lifetime retention and
+  a five-keeper extension-level LRU guard. Hidden least-recently-used pages are
+  evicted first while inference and Session ownership remain page-local.

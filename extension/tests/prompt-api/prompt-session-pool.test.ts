@@ -27,7 +27,6 @@ function poolFor(api: LanguageModelApi, options: PromptSessionPoolOptions = {}) 
     getApi: () => api,
     availabilityTimeoutMs: 50,
     unusedWarmupTtlMs: 1_000,
-    hiddenIdleTtlMs: 1_000,
     ...options
   });
 }
@@ -167,7 +166,7 @@ test("an unused warm-up template is destroyed after its short TTL", async () => 
   pool.dispose();
 });
 
-test("a hidden page releases a used keeper after the hidden grace period", async () => {
+test("a used keeper remains alive while its document is hidden", async () => {
   let destroyed = false;
   const pool = poolFor(
     {
@@ -177,16 +176,16 @@ test("a hidden page releases a used keeper after the hidden grace period", async
           clone: async () => session(),
           onDestroy: () => (destroyed = true)
         })
-    },
-    { hiddenIdleTtlMs: 5 }
+    }
   );
 
   const acquired = await pool.acquire(new AbortController().signal);
   acquired.release();
   pool.handleVisibilityChange(true);
   await new Promise((resolve) => setTimeout(resolve, 15));
-  assert.equal(destroyed, true);
+  assert.equal(destroyed, false);
   pool.dispose();
+  assert.equal(destroyed, true);
 });
 
 test("acquisition aborts even when clone ignores its AbortSignal", async () => {
@@ -444,7 +443,7 @@ test("a used keeper remains alive while the document stays visible", async () =>
   assert.equal(templateDestroyed, true);
 });
 
-test("returning to visibility cancels hidden keeper disposal", async () => {
+test("visibility changes never dispose a used keeper", async () => {
   let templateDestroyed = false;
   const pool = poolFor(
     {
@@ -454,8 +453,7 @@ test("returning to visibility cancels hidden keeper disposal", async () => {
           clone: async () => session(),
           onDestroy: () => (templateDestroyed = true)
         })
-    },
-    { hiddenIdleTtlMs: 10 }
+    }
   );
 
   const acquired = await pool.acquire(new AbortController().signal);

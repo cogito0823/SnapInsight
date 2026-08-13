@@ -11,6 +11,10 @@ import type {
   SenderContext
 } from "../../shared/state/request-types";
 import {
+  PROMPT_KEEPER_MESSAGE_TYPE,
+  type PromptKeeperLifecycleAction
+} from "../../shared/contracts/prompt-keeper";
+import {
   buildExplanationPrompt,
   PROMPT_API_MODEL_ID
 } from "../../prompt-api/prompts";
@@ -67,6 +71,29 @@ const DEFAULT_TIMEOUTS: PromptClientTimeouts = {
 
 let timeouts = { ...DEFAULT_TIMEOUTS };
 const activeRequests = new Map<string, ActivePromptRequest>();
+let keeperPageInstanceId: string | null = null;
+let pageHidden = typeof document !== "undefined" && document.visibilityState !== "visible";
+
+function reportKeeperLifecycle(
+  action: PromptKeeperLifecycleAction,
+  pageInstanceId: string
+): void {
+  if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) return;
+  try {
+    void chrome.runtime.sendMessage({
+      type: PROMPT_KEEPER_MESSAGE_TYPE,
+      payload: { action, pageInstanceId, hidden: pageHidden }
+    }).catch(() => undefined);
+  } catch {
+    // Worker coordination is best-effort; page-local keeper behavior remains safe.
+  }
+}
+
+function unregisterKeeper(): void {
+  if (!keeperPageInstanceId) return;
+  reportKeeperLifecycle("remove", keeperPageInstanceId);
+  keeperPageInstanceId = null;
+}
 
 function isDomError(error: unknown, name: string): boolean {
   return error instanceof DOMException && error.name === name;
@@ -124,6 +151,7 @@ function emitGenerationTerminal(
 
 function generationError(error: unknown): ExtensionError {
   if (error instanceof PromptSessionPoolError) {
+    if (error.extensionError.code === "quota_exceeded") unregisterKeeper();
     return error.extensionError;
   }
   if (isDomError(error, "NotSupportedError")) {
@@ -135,6 +163,7 @@ function generationError(error: unknown): ExtensionError {
   }
   if (isDomError(error, "QuotaExceededError")) {
     pagePromptSessionPool.noteQuotaFailure();
+    unregisterKeeper();
     return createExtensionError(
       "quota_exceeded",
       "Chrome's on-device model has no capacity for another session.",
@@ -405,6 +434,8 @@ export async function startPromptExplanation(options: {
 
   try {
     request.acquired = await pagePromptSessionPool.acquire(request.controller.signal);
+    keeperPageInstanceId = options.senderContext.pageInstanceId;
+    reportKeeperLifecycle("touch", keeperPageInstanceId);
     request.prewarmed = request.acquired.prewarmed;
     emitPromptPerformance({
       phase: "acquire",
@@ -483,7 +514,11 @@ export function warmUpPromptModel(): Promise<void> {
 }
 
 export function handlePromptPageVisibility(hidden: boolean): void {
+  pageHidden = hidden;
   pagePromptSessionPool.handleVisibilityChange(hidden);
+  if (keeperPageInstanceId) {
+    reportKeeperLifecycle("visibility", keeperPageInstanceId);
+  }
 }
 
 export function disposePromptResources(): void {
@@ -491,6 +526,13 @@ export function disposePromptResources(): void {
     cancelPromptExplanation(requestId);
   }
   pagePromptSessionPool.dispose();
+  unregisterKeeper();
+}
+
+export function evictPromptKeeper(pageInstanceId: string): void {
+  if (keeperPageInstanceId !== pageInstanceId) return;
+  pagePromptSessionPool.dispose();
+  keeperPageInstanceId = null;
 }
 
 export function setPromptClientTimeoutsForTesting(

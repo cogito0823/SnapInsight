@@ -86,14 +86,15 @@ Webpage
               └── Chrome-managed on-device model
 
 Manifest V3 Service Worker
-  └── installation flow and toolbar entry point
+  ├── installation flow and toolbar entry point
+  └── privacy-safe LRU coordination for at most five page keepers
 ```
 
-Inference runs directly in the Content Script's isolated world. A valid selection can warm a page-scoped template session. After its first real request, that unprompted template stays alive while the document is visible to keep Chrome's model runtime ready; hidden documents release it after a five-minute grace period, while navigation and page teardown release it immediately. Individual explanations use isolated clones when Chrome supports cloning, or separately created request sessions while the keeper remains untouched. The Service Worker does not proxy model requests.
+Inference runs directly in the Content Script's isolated world. A valid selection can warm a page-scoped template session. After its first real request, that unprompted template follows the document lifetime even while the tab remains hidden. Individual explanations use isolated clones when Chrome supports cloning, or separately created request sessions while the keeper remains untouched. The Service Worker does not proxy model requests; it coordinates privacy-safe metadata for at most five page keepers and evicts the least-recently-used hidden keeper first. Navigation, reload, page teardown, invalid sessions, and LRU eviction release a keeper.
 
 ## Privacy and permissions
 
-SnapInsight processes only the text explicitly selected by the user and its screen coordinates. It does not read surrounding paragraphs, page titles, form data, or browsing history. Selected text and generated responses are not persisted.
+SnapInsight processes only the text explicitly selected by the user and its screen coordinates. It does not read surrounding paragraphs, page titles, form data, or browsing history. Selected text and generated responses are not persisted. The `storage` permission keeps only session-scoped keeper LRU metadata; it contains no URL, title, selected text, prompt, or generated content.
 
 The Manifest uses `content_scripts.matches: ["<all_urls>"]` so the `SI` trigger can appear after a selection without requiring a toolbar click first. This access is used only for selection detection and rendering the in-page interface. The extension does not request `tabs`, `history`, `webRequest`, or `offscreen` permissions.
 

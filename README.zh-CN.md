@@ -84,14 +84,15 @@ Release Please 根据 Conventional Commits 自动维护版本与 Changelog PR；
               └── Chrome 管理的设备端模型
 
 Manifest V3 Service Worker
-  └── 安装流程与工具栏入口
+  ├── 安装流程与工具栏入口
+  └── 最多 5 个页面 keeper 的隐私安全 LRU 协调
 ```
 
-推理直接运行在 Content Script 的扩展隔离世界中。有效选区可以预热页面级模板会话；模板完成首次真实请求后，会在当前文档可见期间保持存活，让 Chrome 的模型运行时尽量维持就绪。文档隐藏后有 5 分钟宽限期，导航或页面销毁时立即释放。每次解释在 Chrome 支持时使用相互隔离的克隆会话；不支持克隆时，keeper 保持不变，并为请求另建独立会话。Service Worker 不转发模型请求。
+推理直接运行在 Content Script 的扩展隔离世界中。有效选区可以预热页面级模板会话；模板完成首次真实请求后，会跟随当前页面文档存在，即使标签页长期隐藏也不再按固定时间主动释放。每次解释在 Chrome 支持时使用相互隔离的克隆会话；不支持克隆时，keeper 保持不变，并为请求另建独立会话。Service Worker 不转发模型请求，只用不含网页内容的状态协调最多 5 个页面 keeper；超限时优先释放最久未使用的隐藏 keeper。导航、刷新、页面关闭、会话失效或 LRU 驱逐会释放 keeper。
 
 ## 隐私与权限
 
-SnapInsight 只处理用户明确选中的文字及其屏幕坐标，不读取相邻段落、页面标题、表单内容或浏览历史，也不会持久化选中文字和生成结果。
+SnapInsight 只处理用户明确选中的文字及其屏幕坐标，不读取相邻段落、页面标题、表单内容或浏览历史，也不会持久化选中文字和生成结果。`storage` 权限仅保存当前浏览器会话内的 keeper LRU 元数据，不包含 URL、标题、选中文字、prompt 或生成内容。
 
 Manifest 使用 `content_scripts.matches: ["<all_urls>"]`，让用户选词后无需先点击工具栏按钮即可看到 `SI` 入口。该访问范围仅用于检测选区和渲染页面内界面。扩展不申请 `tabs`、`history`、`webRequest` 或 `offscreen` 权限。
 

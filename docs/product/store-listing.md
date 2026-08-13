@@ -48,6 +48,13 @@ SnapInsight 的唯一用途是在普通网页中读取用户明确选中的少�
 
 扩展需要在普通网页中检测用户创建的文字选区、显示 SI 触发器和解释卡片。它只读取用户主动选中的文字和选区坐标，不读取完整页面内容，不申请 `host_permissions`，也不向网站或外部服务器发送内容。
 
+### `storage`
+
+仅使用 `chrome.storage.session` 保存最多 5 个页面 keeper 的 LRU 协调元数据，
+使 Manifest V3 Service Worker 休眠恢复后仍能限制空闲会话数量。数据仅包含
+tab/frame 运行时编号、随机页面实例编号、可见性和最近使用顺序，不包含 URL、
+标题、选中文字、prompt 或生成内容，并随浏览器会话结束而清除。
+
 ### 远程代码
 
 不使用远程代码。所有扩展 JavaScript 均打包在上传文件中；模型能力由 Chrome Prompt API 提供。

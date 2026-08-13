@@ -73,6 +73,7 @@ extension/
       messaging/
     worker/
       bootstrap/
+      prompt-keeper/
       handlers/
       bridge/
       settings/
@@ -153,6 +154,8 @@ Owns extension-global coordination.
 Recommended submodules:
 
 - `bootstrap/`: worker startup, message registration, alarm or lifecycle hooks if later needed
+- `prompt-keeper/`: privacy-safe keeper registry persistence and global LRU
+  eviction coordination; never owns Prompt API sessions or prompt content
 - `handlers/`: message-type entrypoints such as `health.check`, `models.list`, `settings.getSelectedModel`, `settings.setSelectedModel`, `explanations.start`, and cancellation
 - `bridge/`: long-lived stream delivery, sender-context routing, and bridge-loss handling
 - `settings/`: persistence reads and writes to `chrome.storage.local`
