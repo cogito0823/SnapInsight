@@ -67,7 +67,8 @@ npm run build
 不会包含选中文字、prompt、输出、页面 URL 或页面身份。
 
 本地和 CI 验证构建保持当前 Manifest 版本不变，通过 Git commit SHA 区分。
-只有发布 Pull Request 才更新正式版本号，只有版本 tag 才创建 GitHub Release。
+Release Please 根据 Conventional Commits 自动维护版本与 Changelog PR；合并
+该 PR 后自动创建版本 tag、经过验证的 ZIP、校验和与 GitHub Release。
 完整约定参见[开发与发布流程](docs/product/release-process.md)和
 [版本变更记录](CHANGELOG.md)。
 

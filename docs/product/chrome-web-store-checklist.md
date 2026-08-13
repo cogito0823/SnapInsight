@@ -6,9 +6,10 @@
 - [x] 无远程代码、`eval` 或外部脚本
 - [x] 无固定 localhost 权限、后端或桌面 App 依赖
 - [x] Manifest 最低版本为 Chrome 138
-- [x] 版本号已更新为 0.2.0
+- [ ] Release Please PR 中 Manifest、package、lockfile、商店资料和候选版本一致
 - [x] 添加 16、32、48、128 px 正式图标并在 Manifest 声明
 - [x] 生成可上传的 zip，并人工检查包内只含 `dist` 产物
+- [ ] 从自动创建的 GitHub Release 下载 ZIP 并核对 SHA-256
 
 ## 商店资料
 

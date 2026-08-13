@@ -68,8 +68,9 @@ only phase, duration, warm/fallback path, cache/prewarm status, mode, and outcom
 they never include selected text, prompts, output, page URLs, or page identity.
 
 Local and CI validation builds keep the current Manifest version and are
-identified by their Git commit SHA. Only a release pull request changes the
-formal version, and only a version tag creates a GitHub Release. See the
+identified by their Git commit SHA. Release Please automatically maintains a
+version-and-changelog pull request from Conventional Commits. Merging that PR
+creates the version tag, verified ZIP, checksum, and GitHub Release. See the
 [release process](docs/product/release-process.md) and
 [changelog](CHANGELOG.md).
 

@@ -11,7 +11,11 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 }
 
 const changelog = await readFile(changelogPath, "utf8");
-const heading = new RegExp(`^## \\[${version.replaceAll(".", "\\.")}\\](?: - .+)?$`, "m");
+const escapedVersion = version.replaceAll(".", "\\.");
+const heading = new RegExp(
+  `^## (?:${escapedVersion}|\\[${escapedVersion}\\](?:\\([^\\n]+\\))?)(?: - .+| \\(.+\\))?$`,
+  "m"
+);
 const match = heading.exec(changelog);
 
 if (!match) {
@@ -30,4 +34,3 @@ if (!notes) {
 }
 
 process.stdout.write(`${notes}\n`);
-
