@@ -15,6 +15,12 @@ SnapInsight 只处理用户主动选中的网页文字。扩展不会收集相�
 - SnapInsight 不使用遥测、分析 SDK 或远程代码。
 - Chrome 为准备设备端模型而进行的下载由 Chrome 自身负责，受 Chrome 相关条款约束。
 
+## Chrome Web Store Limited Use
+
+SnapInsight 对用户主动选中文字的使用仅限于提供扩展中清楚展示的解释功能。SnapInsight 对相关信息的使用遵守 Chrome Web Store User Data Policy，包括 Limited Use 要求。SnapInsight 不会将这些信息出售或传输给第三方，不会将其用于与扩展单一用途无关的目的，也不会将其用于信用评估或贷款。
+
+SnapInsight's use of information is limited to providing the explanation feature clearly presented to the user. The use of information complies with the Chrome Web Store User Data Policy, including the Limited Use requirements. SnapInsight does not sell or transfer this information to third parties, use it for purposes unrelated to the extension's single purpose, or use it for creditworthiness or lending purposes.
+
 ## 权限用途
 
 - Content Script 的 `<all_urls>` 匹配：用于在普通网页中读取用户明确创建的文字选区并显示解释卡片。扩展不申请 `host_permissions`，也不向网站或外部服务器发起内容请求。
