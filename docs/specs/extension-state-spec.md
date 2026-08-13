@@ -16,7 +16,7 @@ It makes the following implementation details explicit:
 
 - page-local content-script state
 - per-request state for short and detailed explanations
-- persistent settings stored in `chrome.storage.local`
+- session-scoped keeper coordination stored in `chrome.storage.session`
 - boundaries between ephemeral UI state and durable extension settings
 
 This document does not define:
@@ -33,7 +33,8 @@ This spec applies to:
 - the service worker's persistent settings view
 - the options page's read and write access to extension settings
 
-This spec does not introduce a database schema. SnapInsight v1 uses browser local storage only.
+This spec does not introduce a database schema. Product content remains
+ephemeral; keeper coordination uses browser session storage only.
 
 ## 3. Design Principles
 
@@ -42,6 +43,8 @@ This spec does not introduce a database schema. SnapInsight v1 uses browser loca
 - Separate short and detailed explanation state so concurrent requests do not overwrite each other.
 - Route active requests using both `requestId` and `senderContext`.
 - Fail closed when persistent state depends on a live local-service validation step.
+- Never store URL, title, selected text, prompt, or generated output in keeper
+  coordination state.
 
 ## 4. Common State Types
 
@@ -164,6 +167,34 @@ The visible request lifecycle distinguishes startup rejection before acceptance 
 
 - startup rejection before acceptance may move the targeted request directly from `idle` to `error`
 - only an accepted `explanations.start` request may enter `starting`
+
+### 4.8 Keeper Registry Entry
+
+The Service Worker may persist at most five keeper registry entries in
+`chrome.storage.session`:
+
+```json
+{
+  "tabId": 123,
+  "frameId": 0,
+  "pageInstanceId": "doc-7f6d6b2d",
+  "hidden": true,
+  "lastUsedAt": 1786597200000
+}
+```
+
+Rules:
+
+- an entry is created or touched only after a real request acquires a page
+  keeper;
+- Worker suspension must not lose LRU order;
+- stale page instances in the same tab/frame are replaced;
+- tab close, page teardown, invalidation, and explicit disposal unregister the
+  entry;
+- when more than five entries exist, evict the least-recently-used hidden entry
+  first, or the least-recently-used entry if all are visible;
+- five is an application resource guard, not a declared Chrome quota;
+- the registry must never contain content-bearing or browsing-history fields.
 
 ## 5. Page-Local Content Script State
 

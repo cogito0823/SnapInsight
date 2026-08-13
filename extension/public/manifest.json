@@ -6,6 +6,9 @@
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "minimum_chrome_version": "138",
+  "permissions": [
+    "storage"
+  ],
   "background": {
     "service_worker": "worker.js",
     "type": "module"

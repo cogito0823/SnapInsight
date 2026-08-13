@@ -49,6 +49,9 @@ changing SnapInsight's privacy or Service Worker boundaries.
 - [x] Offer an explicit cancel action after 8 seconds without visible output.
 - [x] Extract and test cancellable warm-up debounce.
 - [x] Update architecture, compatibility, localization, and release-note inputs.
+- [x] Retain used keepers for the surviving document lifetime, including while
+  hidden.
+- [x] Coordinate a privacy-safe five-keeper LRU limit through the Service Worker.
 
 ## Automated Verification
 
@@ -57,7 +60,7 @@ Executed from a clean dependency install on 2026-08-13:
 ```text
 npm ci          passed
 npm run check   passed
-npm test        72 passed, 0 failed
+npm test        78 passed, 0 failed
 npm run build   passed
 ```
 
@@ -68,7 +71,9 @@ Focused coverage includes:
 - clone absence preserves the keeper and uses independent request sessions;
 - invalid-state clone failure invalidates and rebuilds the template once;
 - `downloadable` warm-up never calls `create()`;
-- unused warm-up and hidden keeper TTLs destroy the template;
+- unused warm-up expires while used keepers survive visibility changes;
+- global keeper coordination retains five entries and evicts hidden LRU pages
+  first;
 - abort releases acquisition even when clone ignores its signal;
 - startup, first-token, and stream-stall timeouts surface the correct error;
 - cancellation explicitly closes a pending stream reader;
@@ -133,13 +138,15 @@ accepted architecture.
 
 ## Development and Release Flow
 
-The implementation is merged into `main`. The remaining repository workflow is:
+The document-lifetime and global LRU follow-up is implemented on
+`codex/prompt-keeper-lifecycle`. The remaining repository workflow is:
 
-1. allow Release Please to create or update the automated Release PR from the
-   merged Conventional Commit;
-2. complete the real-Chrome gate and require Release PR CI and review;
-3. merge the Release PR when the candidate is ready;
-4. let the release workflow create the immutable `v<version>` tag, verified
+1. open the feature Pull Request and require CI plus review;
+2. complete the real-Chrome gate against its exact build;
+3. merge the feature PR into `main` with a `fix:` Conventional Commit;
+4. allow Release Please to update the automated Release PR;
+5. merge that Release PR when ready and let the workflow create the immutable
+   `v<version>` tag, verified
    archive, checksum, and GitHub Release automatically.
 
 ## Change Record
@@ -150,3 +157,5 @@ The implementation is merged into `main`. The remaining repository workflow is:
 - 2026-08-13: Replaced the 60-second visible idle TTL with a document-lifetime
   keeper, extended hidden retention to 5 minutes, and preserved the keeper on
   the no-clone fallback path after real-use cold-start feedback.
+- 2026-08-13: Replaced the hidden timeout with document-lifetime retention and
+  added a five-keeper, hidden-first LRU guard coordinated by the Service Worker.

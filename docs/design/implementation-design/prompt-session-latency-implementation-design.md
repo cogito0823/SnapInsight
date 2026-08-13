@@ -21,6 +21,8 @@ extension/src/content/prompt-api/
   prompt-session-pool.ts
   prompt-performance.ts
   prompt-warmup.ts
+extension/src/worker/prompt-keeper/
+  keeper-coordinator.ts
 ```
 
 - `prompt-session-pool.ts` owns the page-local template, readiness cache,
@@ -29,6 +31,8 @@ extension/src/content/prompt-api/
   streaming events, request-session cleanup, and error normalization.
 - `prompt-performance.ts` emits privacy-safe development measurements.
 - `prompt-warmup.ts` owns cancellable debounce for interaction-driven warm-up.
+- `keeper-coordinator.ts` persists privacy-safe page keeper metadata across
+  Worker suspension and enforces a global five-keeper LRU guard.
 - `prompt-client.ts` also owns abort-linked request timeouts so cancellation,
   active-request identity, and user feedback remain coordinated in one place.
 
@@ -46,10 +50,10 @@ idle
 
 Only one template-creation promise may exist. Callers that arrive during
 `checking` or `creating-template` await that promise. A successful request marks
-the template as used and promotes it to a visible-document keeper with no
+the template as used and promotes it to a document-lifetime keeper with no
 ordinary idle TTL. A warm-up that is not followed by a request uses the shorter
-unused TTL even if the document becomes hidden. A used keeper switches to the
-bounded hidden grace period while its document is hidden.
+unused TTL even if the document becomes hidden. Visibility does not add a local
+TTL after the template has served a real request.
 
 The pool exposes:
 
@@ -65,10 +69,10 @@ dispose(): void
 `AcquiredPromptSession.release()` is idempotent and destroys only the request
 session. Template disposal remains pool-owned.
 
-Session acquisition clears any pending unused or hidden disposal timer before
+Session acquisition clears any pending unused disposal timer before
 creating a clone or fallback request session. A successful acquisition promotes
 the template to a used keeper; a failed acquisition restores disposal according
-to the template's prior used/visibility state. This prevents a short warm-up TTL
+to whether the template has served a request. This prevents a short warm-up TTL
 from destroying the keeper while request-session creation is still pending.
 
 ## Acquisition Algorithm
@@ -196,11 +200,15 @@ and quota mappings keep their existing meaning.
 
 ## Lifecycle Integration
 
-- visible used keeper: retain for the current document lifetime without an idle
-  timer;
+- used keeper: retain for the current document lifetime without an idle timer,
+  including while hidden;
 - unused warm-up: release after 15 seconds if no real request consumes it;
-- `visibilitychange`: schedule disposal after 5 minutes while hidden, or cancel
-  hidden disposal when the document becomes visible again;
+- `visibilitychange`: update Worker coordination metadata only;
+- successful acquisition: register/touch the page keeper with the Worker;
+- extension-level limit: retain at most five registered keepers, evicting the
+  least-recently-used hidden page first and then the least-recently-used page;
+- Worker restart: restore registry ordering from `chrome.storage.session`;
+- LRU eviction: dispose the targeted page pool; its next request recreates it;
 - `pagehide`: cancel pending warm-up and dispose the pool.
 - SPA document-instance navigation: cancel active requests, pending warm-up, and
   dispose the pool before rotating the page instance.
@@ -216,8 +224,9 @@ Automated tests must cover:
   unavailable;
 - template invalidation and one retry after invalid-state clone failure;
 - warm-up never calls create when readiness is not `available`;
-- visible keeper retention, unused-warm-up disposal, hidden grace disposal, and
-  hidden-to-visible timer cancellation;
+- visible and hidden keeper retention plus unused-warm-up disposal;
+- five-entry LRU coordination, hidden-first eviction, Worker restart recovery,
+  stale document replacement, and tab-close cleanup;
 - page lifecycle disposal;
 - availability, startup, first-token, and stream-stall timeouts;
 - stale/cancelled requests do not emit UI content;
@@ -244,7 +253,9 @@ cannot reproduce Chrome's model-runtime cold start, memory pressure, or quota.
 ## Alignment Review
 
 - The Prompt API remains in the Content Script document context.
-- Service Worker responsibilities and Manifest permissions are unchanged.
+- The Service Worker coordinates keeper metadata and targeted eviction but does
+  not proxy prompts or own Prompt API sessions. The Manifest adds `storage` for
+  session-scoped LRU state only.
 - Model preparation remains an explicit device-status-page action.
 - Request histories remain isolated through clone or independent-create paths.
 - Performance diagnosis preserves the documented no-telemetry privacy boundary.
@@ -257,3 +268,6 @@ cannot reproduce Chrome's model-runtime cold start, memory pressure, or quota.
 - 2026-08-13: Updated to retain one used keeper for the visible document
   lifetime, use a 5-minute hidden grace period, and preserve the keeper on the
   no-clone fallback path.
+- 2026-08-13: Replaced hidden timeout disposal with document-lifetime retention
+  and added a five-keeper, hidden-first extension LRU guard backed by
+  `chrome.storage.session`.

@@ -28,7 +28,14 @@ Chrome 当前正式列出的 Prompt API 文本语言是英语、日语、西班�
 
 真实 Chrome 已确认 Prompt API 在 Content Script 的扩展隔离世界中可见并能完成 `availability()`、`create()` 和 `prompt()`。扩展因此直接在当前页面实例中持有生成会话，不使用 Offscreen Document，也不依赖 Service Worker 转发流式事件。
 
-模型文件和底层模型运行时仍由 Chrome/Profile 管理，不跟随扩展 Service Worker。SnapInsight 只在发生有效选区交互后按需创建页面级 keeper/template 会话，并在 Chrome 支持时为每次解释调用 `clone()` 保持上下文隔离。完成首次真实请求后，keeper 在当前文档可见期间保持存活，以遵循 Chrome 保留一个空会话来维持模型就绪的性能建议；文档隐藏后保留 5 分钟，导航、刷新或页面卸载时立即回收。仅预热但从未使用的会话仍在 15 秒后回收。
+模型文件和底层模型运行时仍由 Chrome/Profile 管理，不跟随扩展 Service Worker。SnapInsight 只在发生有效选区交互后按需创建页面级 keeper/template 会话，并在 Chrome 支持时为每次解释调用 `clone()` 保持上下文隔离。完成首次真实请求后，keeper 跟随当前页面文档存在，即使标签页长期隐藏也不再按固定时间主动回收；导航、刷新或页面卸载时立即回收。仅预热但从未使用的会话仍在 15 秒后回收。
+
+为避免大量标签页无限累计 session，Service Worker 使用 `chrome.storage.session`
+协调最多 5 个页面 keeper。登记内容仅包含 Chrome 提供的 tab/frame 运行时编号、
+随机页面实例编号、可见性和最近使用顺序。超限时优先释放最久未使用的隐藏
+keeper；若所有 keeper 都可见，则释放最久未使用者。被释放页面下次使用时可
+按需重建。该上限是 SnapInsight 的资源安全阀，不代表 Chrome 公布了 Session
+数量配额。
 
 不支持 `clone()` 时，keeper 不承载任何用户请求；每次解释都另行创建并销毁独立请求会话。这样会多占用一个空会话，但同时保持模型就绪和请求上下文隔离。每个标签页文档拥有自己的 keeper，底层模型运行时仍由 Chrome 管理，Session 不能放入 Service Worker 或跨刷新复用。
 

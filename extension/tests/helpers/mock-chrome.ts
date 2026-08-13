@@ -10,6 +10,7 @@ export interface MockChromeEnvironment {
     message: unknown,
     sender?: chrome.runtime.MessageSender
   ) => Promise<void>;
+  emitTabRemoved: (tabId: number) => void;
   restore: () => void;
 }
 
@@ -45,6 +46,9 @@ export function installMockChrome(options?: {
     (details: chrome.runtime.InstalledDetails) => void
   > = [];
   const actionListeners: Array<(tab: chrome.tabs.Tab) => void> = [];
+  const tabRemovedListeners: Array<
+    (tabId: number, removeInfo: { windowId: number; isWindowClosing: boolean }) => void
+  > = [];
   const originalChrome = (globalThis as typeof globalThis & { chrome?: typeof chrome })
     .chrome;
 
@@ -140,6 +144,21 @@ export function installMockChrome(options?: {
           Object.assign(storageState, items);
           callback?.();
         }
+      },
+      session: {
+        get: async (keys: string | string[] | null) => {
+          if (keys === null) return { ...storageState };
+          const requested = Array.isArray(keys) ? keys : [keys];
+          return Object.fromEntries(requested.map((key) => [key, storageState[key]]));
+        },
+        set: async (items: Record<string, unknown>) => {
+          Object.assign(storageState, items);
+        },
+        remove: async (keys: string | string[]) => {
+          for (const key of Array.isArray(keys) ? keys : [keys]) {
+            delete storageState[key];
+          }
+        }
       }
     },
     tabs: {
@@ -159,6 +178,23 @@ export function installMockChrome(options?: {
         }
 
         return options.tabsSendMessage(tabId, message, optionsArg);
+      },
+      onRemoved: {
+        addListener: (
+          listener: (tabId: number, removeInfo: { windowId: number; isWindowClosing: boolean }) => void
+        ) => {
+          tabRemovedListeners.push(listener);
+        },
+        removeListener: (
+          listener: (tabId: number, removeInfo: { windowId: number; isWindowClosing: boolean }) => void
+        ) => {
+          const index = tabRemovedListeners.indexOf(listener);
+          if (index >= 0) tabRemovedListeners.splice(index, 1);
+        },
+        hasListener: (
+          listener: (tabId: number, removeInfo: { windowId: number; isWindowClosing: boolean }) => void
+        ) => tabRemovedListeners.includes(listener),
+        hasListeners: () => tabRemovedListeners.length > 0
       }
     }
   } as unknown as typeof chrome;
@@ -188,6 +224,11 @@ export function installMockChrome(options?: {
             })
         )
       );
+    },
+    emitTabRemoved: (tabId: number) => {
+      for (const listener of tabRemovedListeners) {
+        listener(tabId, { windowId: 1, isWindowClosing: false });
+      }
     },
     restore: () => {
       (globalThis as typeof globalThis & { chrome?: typeof chrome }).chrome =

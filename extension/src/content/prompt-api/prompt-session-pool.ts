@@ -15,7 +15,6 @@ export interface PromptSessionPoolOptions {
   availableReadinessTtlMs?: number;
   blockedReadinessTtlMs?: number;
   unusedWarmupTtlMs?: number;
-  hiddenIdleTtlMs?: number;
   quotaBackoffMs?: number;
   getApi?: () => LanguageModelApi | null;
 }
@@ -43,7 +42,6 @@ const DEFAULTS = {
   availableReadinessTtlMs: 60_000,
   blockedReadinessTtlMs: 5_000,
   unusedWarmupTtlMs: 15_000,
-  hiddenIdleTtlMs: 5 * 60_000,
   quotaBackoffMs: 10_000
 };
 
@@ -131,7 +129,6 @@ export class PromptSessionPool {
   } | null = null;
   private activeRequests = 0;
   private templateWasUsed = false;
-  private hidden = false;
   private lifecycleGeneration = 0;
   private warmupInFlight = false;
   private templatePrewarmed = false;
@@ -146,7 +143,6 @@ export class PromptSessionPool {
         options.blockedReadinessTtlMs ?? DEFAULTS.blockedReadinessTtlMs,
       unusedWarmupTtlMs:
         options.unusedWarmupTtlMs ?? DEFAULTS.unusedWarmupTtlMs,
-      hiddenIdleTtlMs: options.hiddenIdleTtlMs ?? DEFAULTS.hiddenIdleTtlMs,
       quotaBackoffMs: options.quotaBackoffMs ?? DEFAULTS.quotaBackoffMs,
       getApi: options.getApi ?? getLanguageModelApi
     };
@@ -488,19 +484,19 @@ export class PromptSessionPool {
   scheduleIdleDisposal(): void {
     this.clearDisposalTimer();
     if (!this.template || this.activeRequests > 0) return;
-    if (this.templateWasUsed && !this.hidden) {
-      // A used keeper stays alive for the visible document lifetime so Chrome
-      // can keep its model runtime ready between distant interactions.
+    if (this.templateWasUsed) {
+      // A used keeper follows the document lifetime, including while hidden,
+      // so the extension does not deliberately make Chrome's model runtime
+      // cold after a long tab or application switch.
       return;
     }
-    const delay = this.templateWasUsed
-      ? this.options.hiddenIdleTtlMs
-      : this.options.unusedWarmupTtlMs;
-    this.disposalTimer = setTimeout(() => this.dispose(), delay);
+    this.disposalTimer = setTimeout(
+      () => this.dispose(),
+      this.options.unusedWarmupTtlMs
+    );
   }
 
-  handleVisibilityChange(hidden: boolean): void {
-    this.hidden = hidden;
+  handleVisibilityChange(_hidden: boolean): void {
     this.scheduleIdleDisposal();
   }
 
