@@ -61,6 +61,11 @@ npm run build
 
 使用 `npm run dev` 可持续监听构建。重新构建后，需要在 `chrome://extensions` 中重新加载扩展，并刷新测试网页。
 
+本地和 CI 验证构建保持当前 Manifest 版本不变，通过 Git commit SHA 区分。
+只有发布 Pull Request 才更新正式版本号，只有版本 tag 才创建 GitHub Release。
+完整约定参见[开发与发布流程](docs/product/release-process.md)和
+[版本变更记录](CHANGELOG.md)。
+
 ## 架构
 
 ```text

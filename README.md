@@ -61,6 +61,12 @@ npm run build
 
 Use `npm run dev` for watch builds. After rebuilding, reload the extension from `chrome://extensions` and refresh the page being tested.
 
+Local and CI validation builds keep the current Manifest version and are
+identified by their Git commit SHA. Only a release pull request changes the
+formal version, and only a version tag creates a GitHub Release. See the
+[release process](docs/product/release-process.md) and
+[changelog](CHANGELOG.md).
+
 ## Architecture
 
 ```text

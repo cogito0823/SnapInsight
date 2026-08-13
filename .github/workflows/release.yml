@@ -70,14 +70,9 @@ jobs:
           retention-days: 30
 
       - name: Prepare release notes
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
-            --method POST \
-            -f tag_name="${GITHUB_REF_NAME}" \
-            -f target_commitish="${GITHUB_SHA}" \
-            --jq .body > release-notes.md
+          node extension/scripts/extract-release-notes.mjs \
+            "${GITHUB_REF_NAME#v}" CHANGELOG.md > release-notes.md
           {
             echo
             echo "## Verification"
@@ -89,6 +84,8 @@ jobs:
             echo '```text'
             cat "release/snapinsight-${GITHUB_REF_NAME#v}.zip.sha256"
             echo '```'
+            echo
+            echo "[Changelog](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md)"
           } >> release-notes.md
 
       - name: Publish GitHub Release
