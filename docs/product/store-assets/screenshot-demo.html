@@ -85,6 +85,13 @@
         background: #43dcb8;
         content: "";
       }
+
+      /* Render the same 1280 × 800 composition at 2× for supersampled store captures. */
+      @media (min-width: 2000px) {
+        body {
+          zoom: 2;
+        }
+      }
     </style>
   </head>
   <body>
