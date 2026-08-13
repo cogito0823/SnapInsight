@@ -4,6 +4,8 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+![SnapInsight——划词即可获得私密的设备端 AI 解释](docs/product/store-assets/snapinsight-promo-top-1400x560.png)
+
 SnapInsight 是一个基于 Chrome 内置 Prompt API 的轻量扩展。选中单词或短语，悬停在选区旁的 `SI` 入口，即可获得简短或详细解释，无需离开当前网页。
 
 模型由 Chrome 管理并在设备端运行。SnapInsight 没有后端、不需要账号，也不会把选中文字发送给 SnapInsight 或第三方模型 API。

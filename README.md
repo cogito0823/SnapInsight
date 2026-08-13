@@ -4,6 +4,8 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+![SnapInsight — select text and get private, on-device AI explanations](docs/product/store-assets/snapinsight-promo-top-1400x560.png)
+
 SnapInsight is a lightweight Chrome extension powered by Chrome's built-in Prompt API. Select a word or short phrase, hover over the `SI` trigger, and get a concise or detailed explanation without leaving the page.
 
 The model runs on the device and is managed by Chrome. SnapInsight has no backend, requires no account, and does not send selected text to SnapInsight or a third-party model API.
