@@ -10,6 +10,8 @@
     "test": "tsx --test tests/**/*.test.ts"
   },
   "devDependencies": {
+    "@emnapi/core": "1.11.3",
+    "@emnapi/runtime": "1.11.3",
     "@types/chrome": "^0.1.40",
     "@types/node": "^25.6.0",
     "tsx": "^4.21.0",
