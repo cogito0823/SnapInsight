@@ -9,6 +9,28 @@ is reserved for Git tags, such as product version `0.2.7` and tag `v0.2.7`.
 
 ## [Unreleased]
 
+### Added
+
+- Added privacy-safe local timing for Prompt API readiness, session setup,
+  cloning, first-token latency, and completion.
+- Added explicit startup, first-token, and stalled-stream timeouts with clearer
+  progressive loading feedback.
+- Added an explicit cancel action for generation that has produced no visible
+  output after an extended wait.
+
+### Changed
+
+- Reused a page-scoped keeper/template session and isolated cloned request
+  sessions to reduce repeated Prompt API initialization during continuous use.
+- Warmed the model only after a stable valid selection, with single-flight
+  creation and automatic cleanup for unused warm-up, hidden, navigated, or
+  closed pages.
+- Kept a used keeper alive while its document is visible, added a five-minute
+  hidden-page grace period, and retained the keeper while creating independent
+  request sessions on Chrome implementations without session cloning.
+- Added bounded readiness caching, quota backoff, and late-session cleanup for
+  browser implementations that resolve session creation after cancellation.
+
 ## [0.2.7] - 2026-08-13
 
 ### Added

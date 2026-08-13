@@ -11,18 +11,34 @@ import type {
   SenderContext
 } from "../../shared/state/request-types";
 import {
-  getLanguageModelApi,
-  type LanguageModelSession
-} from "../../prompt-api/language-model";
-import {
   buildExplanationPrompt,
-  PROMPT_API_MODEL_ID,
-  SNAPINSIGHT_SYSTEM_PROMPT
+  PROMPT_API_MODEL_ID
 } from "../../prompt-api/prompts";
+import {
+  pagePromptSessionPool,
+  PromptSessionPoolError,
+  type AcquiredPromptSession
+} from "./prompt-session-pool";
+import { emitPromptPerformance } from "./prompt-performance";
+
+export type PromptLoadingStage =
+  | "generating"
+  | "starting_model"
+  | "waiting_first_token";
 
 interface ActivePromptRequest {
   controller: AbortController;
-  session: LanguageModelSession | null;
+  acquired: AcquiredPromptSession | null;
+  timeoutKind: "first_token_timeout" | "stream_stalled" | null;
+  mode: SelectionMode;
+  visibleStartedAt: number;
+  generationStartedAt: number | null;
+  visibleWaitEmitted: boolean;
+  hasReceivedChunk: boolean;
+  prewarmed: boolean;
+  longWaitTimer: ReturnType<typeof setTimeout> | null;
+  longWaitOffered: boolean;
+  onLongWait?: (visible: boolean) => void;
 }
 
 export type PromptEventHandler = (message: ExplanationEventMessage) => void;
@@ -31,25 +47,85 @@ export type PromptStartResult =
   | { ok: true; requestId: string }
   | { ok: false; error: ExtensionError };
 
+interface PromptClientTimeouts {
+  acquisitionSoftMs: number;
+  acquisitionHardMs: number;
+  firstTokenSoftMs: number;
+  firstTokenHardMs: number;
+  streamStallMs: number;
+  cancelOfferMs: number;
+}
+
+const DEFAULT_TIMEOUTS: PromptClientTimeouts = {
+  acquisitionSoftMs: 2_000,
+  acquisitionHardMs: 30_000,
+  firstTokenSoftMs: 5_000,
+  firstTokenHardMs: 30_000,
+  streamStallMs: 30_000,
+  cancelOfferMs: 8_000
+};
+
+let timeouts = { ...DEFAULT_TIMEOUTS };
 const activeRequests = new Map<string, ActivePromptRequest>();
 
 function isDomError(error: unknown, name: string): boolean {
   return error instanceof DOMException && error.name === name;
 }
 
-function destroySession(session: LanguageModelSession | null): void {
-  if (!session) {
-    return;
-  }
+function releaseRequest(request: ActivePromptRequest): void {
+  request.acquired?.release();
+  request.acquired = null;
+}
 
-  try {
-    session.destroy();
-  } catch {
-    // Cancellation and document teardown can race with Chrome session cleanup.
+function clearLongWaitOffer(request: ActivePromptRequest): void {
+  if (request.longWaitTimer !== null) {
+    clearTimeout(request.longWaitTimer);
+    request.longWaitTimer = null;
+  }
+  if (request.longWaitOffered) {
+    request.longWaitOffered = false;
+    request.onLongWait?.(false);
   }
 }
 
+function emitVisibleWaitOutcome(
+  request: ActivePromptRequest,
+  outcome: "success" | "error" | "cancelled" | "timeout"
+): void {
+  if (request.visibleWaitEmitted) return;
+  request.visibleWaitEmitted = true;
+  emitPromptPerformance({
+    phase: "visible_wait",
+    durationMs: performance.now() - request.visibleStartedAt,
+    path: request.acquired?.path,
+    mode: request.mode,
+    prewarmed: request.prewarmed,
+    outcome
+  });
+}
+
+function emitGenerationTerminal(
+  request: ActivePromptRequest,
+  outcome: "error" | "cancelled" | "timeout"
+): void {
+  if (!request.hasReceivedChunk) {
+    emitVisibleWaitOutcome(request, outcome);
+    return;
+  }
+  emitPromptPerformance({
+    phase: "complete",
+    durationMs: performance.now() - (request.generationStartedAt ?? performance.now()),
+    path: request.acquired?.path,
+    mode: request.mode,
+    prewarmed: request.prewarmed,
+    outcome
+  });
+}
+
 function generationError(error: unknown): ExtensionError {
+  if (error instanceof PromptSessionPoolError) {
+    return error.extensionError;
+  }
   if (isDomError(error, "NotSupportedError")) {
     return createExtensionError(
       "language_unsupported",
@@ -58,6 +134,7 @@ function generationError(error: unknown): ExtensionError {
     );
   }
   if (isDomError(error, "QuotaExceededError")) {
+    pagePromptSessionPool.noteQuotaFailure();
     return createExtensionError(
       "quota_exceeded",
       "Chrome's on-device model has no capacity for another session.",
@@ -69,6 +146,22 @@ function generationError(error: unknown): ExtensionError {
     "Chrome's on-device model could not generate the explanation.",
     true
   );
+}
+
+function timeoutError(
+  code: "first_token_timeout" | "stream_stalled"
+): ExtensionError {
+  return code === "first_token_timeout"
+    ? createExtensionError(
+        code,
+        "Chrome's on-device model took too long to start responding.",
+        true
+      )
+    : createExtensionError(
+        code,
+        "Chrome's on-device model stopped producing output.",
+        true
+      );
 }
 
 function emitEvent(
@@ -89,11 +182,29 @@ async function generate(options: {
   mode: SelectionMode;
   senderContext: SenderContext;
   onEvent: PromptEventHandler;
+  onStage?: (stage: PromptLoadingStage) => void;
+  onLongWait?: (visible: boolean) => void;
 }): Promise<void> {
   const request = activeRequests.get(options.requestId);
-  if (!request?.session) {
-    return;
-  }
+  if (!request?.acquired) return;
+
+  const promptStartedAt = performance.now();
+  request.generationStartedAt = promptStartedAt;
+  let firstChunkReceived = false;
+  let firstTokenSoftTimer: ReturnType<typeof setTimeout> | null = null;
+  let firstTokenHardTimer: ReturnType<typeof setTimeout> | null = null;
+  let streamStallTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const clearTimer = (timer: ReturnType<typeof setTimeout> | null): void => {
+    if (timer !== null) clearTimeout(timer);
+  };
+  const armStreamStall = (): void => {
+    clearTimer(streamStallTimer);
+    streamStallTimer = setTimeout(() => {
+      request.timeoutKind = "stream_stalled";
+      request.controller.abort();
+    }, timeouts.streamStallMs);
+  };
 
   try {
     emitEvent(
@@ -108,12 +219,48 @@ async function generate(options: {
       options.onEvent
     );
 
-    const stream = request.session.promptStreaming(
+    firstTokenSoftTimer = setTimeout(
+      () => options.onStage?.("waiting_first_token"),
+      timeouts.firstTokenSoftMs
+    );
+    firstTokenHardTimer = setTimeout(() => {
+      request.timeoutKind = "first_token_timeout";
+      request.controller.abort();
+    }, timeouts.firstTokenHardMs);
+
+    const stream = request.acquired.session.promptStreaming(
       buildExplanationPrompt(options.text, options.mode),
       { signal: request.controller.signal }
     );
-    for await (const chunk of stream) {
-      if (chunk) {
+    const reader = stream.getReader();
+    const cancelReader = (): void => {
+      void reader.cancel().catch(() => undefined);
+    };
+    request.controller.signal.addEventListener("abort", cancelReader, {
+      once: true
+    });
+    try {
+      while (true) {
+        const { done, value: chunk } = await reader.read();
+        if (done) break;
+        if (!chunk) continue;
+        if (!firstChunkReceived) {
+          firstChunkReceived = true;
+          request.hasReceivedChunk = true;
+          clearLongWaitOffer(request);
+          clearTimer(firstTokenSoftTimer);
+          clearTimer(firstTokenHardTimer);
+          emitPromptPerformance({
+            phase: "first_token",
+            durationMs: performance.now() - promptStartedAt,
+            path: request.acquired.path,
+            mode: options.mode,
+            prewarmed: request.prewarmed,
+            outcome: "success"
+          });
+          emitVisibleWaitOutcome(request, "success");
+        }
+        armStreamStall();
         emitEvent(
           options.requestId,
           options.senderContext,
@@ -121,8 +268,22 @@ async function generate(options: {
           options.onEvent
         );
       }
+    } finally {
+      request.controller.signal.removeEventListener("abort", cancelReader);
+      reader.releaseLock();
+    }
+    if (request.controller.signal.aborted) {
+      throw new DOMException("Aborted", "AbortError");
     }
 
+    emitPromptPerformance({
+      phase: "complete",
+      durationMs: performance.now() - promptStartedAt,
+      path: request.acquired.path,
+      mode: options.mode,
+      prewarmed: request.prewarmed,
+      outcome: "success"
+    });
     emitEvent(
       options.requestId,
       options.senderContext,
@@ -130,7 +291,40 @@ async function generate(options: {
       options.onEvent
     );
   } catch (error) {
-    if (!isDomError(error, "AbortError")) {
+    if (request.timeoutKind) {
+      if (!request.hasReceivedChunk) {
+        emitPromptPerformance({
+          phase: "first_token",
+          durationMs: performance.now() - promptStartedAt,
+          path: request.acquired.path,
+          mode: options.mode,
+          prewarmed: request.prewarmed,
+          outcome: "timeout"
+        });
+      }
+      emitGenerationTerminal(request, "timeout");
+      emitEvent(
+        options.requestId,
+        options.senderContext,
+        {
+          event: "error",
+          requestId: options.requestId,
+          error: timeoutError(request.timeoutKind)
+        },
+        options.onEvent
+      );
+    } else if (!isDomError(error, "AbortError")) {
+      if (!request.hasReceivedChunk) {
+        emitPromptPerformance({
+          phase: "first_token",
+          durationMs: performance.now() - promptStartedAt,
+          path: request.acquired.path,
+          mode: options.mode,
+          prewarmed: request.prewarmed,
+          outcome: "error"
+        });
+      }
+      emitGenerationTerminal(request, "error");
       emitEvent(
         options.requestId,
         options.senderContext,
@@ -143,7 +337,11 @@ async function generate(options: {
       );
     }
   } finally {
-    destroySession(request.session);
+    clearLongWaitOffer(request);
+    clearTimer(firstTokenSoftTimer);
+    clearTimer(firstTokenHardTimer);
+    clearTimer(streamStallTimer);
+    releaseRequest(request);
     activeRequests.delete(options.requestId);
   }
 }
@@ -154,6 +352,9 @@ export async function startPromptExplanation(options: {
   mode: SelectionMode;
   senderContext: SenderContext;
   onEvent: PromptEventHandler;
+  onStage?: (stage: PromptLoadingStage) => void;
+  onLongWait?: (visible: boolean) => void;
+  visibleStartedAt?: number;
 }): Promise<PromptStartResult> {
   const requestId = options.requestId.trim();
   const text = options.text.trim();
@@ -168,88 +369,134 @@ export async function startPromptExplanation(options: {
     };
   }
 
-  const languageModel = getLanguageModelApi();
-  if (!languageModel) {
-    return {
-      ok: false,
-      error: createExtensionError(
-        "prompt_api_unavailable",
-        "Chrome Prompt API is not available in this browser context.",
-        false
-      )
-    };
-  }
-
-  let availability;
-  try {
-    availability = await languageModel.availability();
-  } catch {
-    return {
-      ok: false,
-      error: createExtensionError(
-        "service_unavailable",
-        "Chrome Prompt API readiness could not be checked.",
-        true
-      )
-    };
-  }
-  if (availability === "unavailable") {
-    return {
-      ok: false,
-      error: createExtensionError(
-        "device_unsupported",
-        "This device does not support Chrome's on-device model.",
-        false
-      )
-    };
-  }
-  if (availability === "downloadable") {
-    return {
-      ok: false,
-      error: createExtensionError(
-        "model_download_required",
-        "Chrome's on-device model must be prepared before use.",
-        false
-      )
-    };
-  }
-  if (availability === "downloading") {
-    return {
-      ok: false,
-      error: createExtensionError(
-        "model_downloading",
-        "Chrome is still downloading the on-device model.",
-        true
-      )
-    };
-  }
-
   cancelPromptExplanation(requestId);
-  const controller = new AbortController();
-  const activeRequest: ActivePromptRequest = { controller, session: null };
-  activeRequests.set(requestId, activeRequest);
+  const request: ActivePromptRequest = {
+    controller: new AbortController(),
+    acquired: null,
+    timeoutKind: null,
+    mode: options.mode,
+    visibleStartedAt: options.visibleStartedAt ?? performance.now(),
+    generationStartedAt: null,
+    visibleWaitEmitted: false,
+    hasReceivedChunk: false,
+    prewarmed: false,
+    longWaitTimer: null,
+    longWaitOffered: false,
+    onLongWait: options.onLongWait
+  };
+  activeRequests.set(requestId, request);
+  options.onStage?.("generating");
+  request.longWaitTimer = setTimeout(() => {
+    request.longWaitTimer = null;
+    request.longWaitOffered = true;
+    request.onLongWait?.(true);
+  }, timeouts.cancelOfferMs);
+
+  const acquisitionStartedAt = performance.now();
+  let acquisitionTimedOut = false;
+  const softTimer = setTimeout(
+    () => options.onStage?.("starting_model"),
+    timeouts.acquisitionSoftMs
+  );
+  const hardTimer = setTimeout(() => {
+    acquisitionTimedOut = true;
+    request.controller.abort();
+  }, timeouts.acquisitionHardMs);
 
   try {
-    activeRequest.session = await languageModel.create({
-      signal: controller.signal,
-      initialPrompts: [{ role: "system", content: SNAPINSIGHT_SYSTEM_PROMPT }]
+    request.acquired = await pagePromptSessionPool.acquire(request.controller.signal);
+    request.prewarmed = request.acquired.prewarmed;
+    emitPromptPerformance({
+      phase: "acquire",
+      durationMs: performance.now() - acquisitionStartedAt,
+      path: request.acquired.path,
+      mode: options.mode,
+      prewarmed: request.prewarmed,
+      outcome: "success"
     });
   } catch (error) {
     activeRequests.delete(requestId);
+    clearLongWaitOffer(request);
+    emitPromptPerformance({
+      phase: "acquire",
+      durationMs: performance.now() - acquisitionStartedAt,
+      mode: options.mode,
+      outcome: acquisitionTimedOut
+        ? "timeout"
+        : isDomError(error, "AbortError")
+          ? "cancelled"
+          : "error"
+    });
+    if (!request.visibleWaitEmitted) {
+      emitVisibleWaitOutcome(
+        request,
+        acquisitionTimedOut
+          ? "timeout"
+          : isDomError(error, "AbortError")
+            ? "cancelled"
+            : "error"
+      );
+    }
+    if (acquisitionTimedOut) {
+      return {
+        ok: false,
+        error: createExtensionError(
+          "model_startup_timeout",
+          "Chrome's on-device model took too long to start.",
+          true
+        )
+      };
+    }
+    if (isDomError(error, "AbortError")) {
+      return {
+        ok: false,
+        error: createExtensionError(
+          "request_cancelled",
+          "The explanation request was cancelled.",
+          false
+        )
+      };
+    }
     return { ok: false, error: generationError(error) };
+  } finally {
+    clearTimeout(softTimer);
+    clearTimeout(hardTimer);
   }
 
+  options.onStage?.("waiting_first_token");
   setTimeout(() => void generate({ ...options, requestId, text }), 0);
   return { ok: true, requestId };
 }
 
 export function cancelPromptExplanation(requestId: string): void {
   const request = activeRequests.get(requestId);
-  if (!request) {
-    return;
-  }
-
+  if (!request) return;
   request.controller.abort();
-  destroySession(request.session);
+  emitGenerationTerminal(request, "cancelled");
+  clearLongWaitOffer(request);
+  releaseRequest(request);
   activeRequests.delete(requestId);
+}
+
+export function warmUpPromptModel(): Promise<void> {
+  return pagePromptSessionPool.warmUp().then(() => undefined);
+}
+
+export function handlePromptPageVisibility(hidden: boolean): void {
+  pagePromptSessionPool.handleVisibilityChange(hidden);
+}
+
+export function disposePromptResources(): void {
+  for (const requestId of [...activeRequests.keys()]) {
+    cancelPromptExplanation(requestId);
+  }
+  pagePromptSessionPool.dispose();
+}
+
+export function setPromptClientTimeoutsForTesting(
+  overrides: Partial<PromptClientTimeouts> | null
+): void {
+  timeouts = overrides
+    ? { ...DEFAULT_TIMEOUTS, ...overrides }
+    : { ...DEFAULT_TIMEOUTS };
 }

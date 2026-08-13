@@ -24,6 +24,7 @@ export interface LanguageModelSession {
     input: string,
     options?: { signal?: AbortSignal }
   ): ReadableStream<string>;
+  clone?(options?: { signal?: AbortSignal }): Promise<LanguageModelSession>;
   destroy(): void;
 }
 

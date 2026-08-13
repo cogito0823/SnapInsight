@@ -4,6 +4,7 @@ import type { ExtensionError } from "../../shared/errors/error-codes";
 import { renderMarkdownToHtml } from "./markdown";
 import { getUiLanguage, t } from "../../shared/i18n";
 import { cardLayoutToStyle, computeCardLayout } from "./card-layout";
+import type { PromptLoadingStage } from "../prompt-api/prompt-client";
 
 const TRIGGER_SIZE = 28;
 
@@ -13,6 +14,8 @@ export interface RenderCallbacks {
   onRetryShort: () => void;
   onExpandDetail: () => void;
   onRetryDetail: () => void;
+  onCancelShort: () => void;
+  onCancelDetail: () => void;
   onCopyShort: () => void;
   onCopyDetail: () => void;
   onOpenSetup: () => void;
@@ -25,6 +28,19 @@ export interface TriggerViewState {
 export interface RequestRenderViewState {
   shortDispatchPending: boolean;
   detailDispatchPending: boolean;
+  shortLoadingStage?: PromptLoadingStage;
+  detailLoadingStage?: PromptLoadingStage;
+  shortCancelAvailable?: boolean;
+  detailCancelAvailable?: boolean;
+}
+
+function loadingMessage(
+  stage: PromptLoadingStage | undefined,
+  mode: "short" | "detailed"
+): string {
+  if (stage === "starting_model") return t("modelStartingSlow");
+  if (stage === "waiting_first_token") return t("waitingFirstToken");
+  return mode === "short" ? t("shortGenerating") : t("detailGenerating");
 }
 
 function escapeHtml(value: string): string {
@@ -143,6 +159,10 @@ function renderLoadingState(message: string): string {
   `;
 }
 
+function renderCancelButton(id: string): string {
+  return `<button id="${id}" type="button" class="snapinsight-secondary-button snapinsight-cancel-button">${t("cancelGeneration")}</button>`;
+}
+
 function renderSectionLabel(
   text: string,
   tone: "short" | "detail"
@@ -211,6 +231,16 @@ function describeError(error: ExtensionError): string {
       return t("errorLanguageUnsupported");
     case "quota_exceeded":
       return t("errorQuotaExceeded");
+    case "readiness_timeout":
+      return t("errorReadinessTimeout");
+    case "model_startup_timeout":
+      return t("errorModelStartupTimeout");
+    case "first_token_timeout":
+      return t("errorFirstTokenTimeout");
+    case "stream_stalled":
+      return t("errorStreamStalled");
+    case "request_cancelled":
+      return t("errorRequestCancelled");
     case "request_failed":
       return error.message;
     default:
@@ -264,7 +294,13 @@ function renderShortSection(
   const request = state.shortRequestState;
 
   if (viewState.shortDispatchPending || request.phase === "starting") {
-    return renderLoadingState(t("shortGenerating"));
+    return `${renderLoadingState(
+      loadingMessage(viewState.shortLoadingStage, "short")
+    )}${
+      viewState.shortCancelAvailable
+        ? renderCancelButton("snapinsight-cancel-short")
+        : ""
+    }`;
   }
 
   if (request.phase === "streaming" || request.phase === "completed") {
@@ -281,7 +317,15 @@ function renderShortSection(
             )
           )
         )}
-        ${renderResponseContent(request.textBuffer, t("explanationGenerating"))}
+        ${renderResponseContent(
+          request.textBuffer,
+          loadingMessage(viewState.shortLoadingStage, "short")
+        )}
+        ${
+          viewState.shortCancelAvailable
+            ? renderCancelButton("snapinsight-cancel-short")
+            : ""
+        }
         ${
           request.phase === "streaming"
             ? `<div class="snapinsight-footnote">${t("contentStreaming")}</div>`
@@ -341,7 +385,14 @@ function renderDetailSection(
     return `
       <div class="snapinsight-detail-section">
         ${renderSectionHeader(t("detailLabel"), "detail")}
-        ${renderLoadingState(t("detailGenerating"))}
+        ${renderLoadingState(
+          loadingMessage(viewState.detailLoadingStage, "detailed")
+        )}
+        ${
+          viewState.detailCancelAvailable
+            ? renderCancelButton("snapinsight-cancel-detail")
+            : ""
+        }
       </div>
     `;
   }
@@ -360,7 +411,15 @@ function renderDetailSection(
             )
           )
         )}
-        ${renderResponseContent(request.textBuffer, t("detailGenerating"))}
+        ${renderResponseContent(
+          request.textBuffer,
+          loadingMessage(viewState.detailLoadingStage, "detailed")
+        )}
+        ${
+          viewState.detailCancelAvailable
+            ? renderCancelButton("snapinsight-cancel-detail")
+            : ""
+        }
         ${
           request.phase === "streaming"
             ? `<div class="snapinsight-footnote">${t("detailStreaming")}</div>`
@@ -439,6 +498,16 @@ function bindStaticButtons(root: ShadowRoot, callbacks: RenderCallbacks): void {
 }
 
 function bindDynamicButtons(root: ShadowRoot, callbacks: RenderCallbacks): void {
+  const cancelShortButton = root.getElementById("snapinsight-cancel-short");
+  if (cancelShortButton instanceof HTMLButtonElement) {
+    bindPressAction(cancelShortButton, callbacks.onCancelShort);
+  }
+
+  const cancelDetailButton = root.getElementById("snapinsight-cancel-detail");
+  if (cancelDetailButton instanceof HTMLButtonElement) {
+    bindPressAction(cancelDetailButton, callbacks.onCancelDetail);
+  }
+
   const retryButton = root.getElementById("snapinsight-retry-short");
   if (retryButton instanceof HTMLButtonElement) {
     bindPressAction(retryButton, callbacks.onRetryShort);

@@ -28,6 +28,13 @@ Chrome 当前正式列出的 Prompt API 文本语言是英语、日语、西班�
 
 真实 Chrome 已确认 Prompt API 在 Content Script 的扩展隔离世界中可见并能完成 `availability()`、`create()` 和 `prompt()`。扩展因此直接在当前页面实例中持有生成会话，不使用 Offscreen Document，也不依赖 Service Worker 转发流式事件。
 
+模型文件和底层模型运行时仍由 Chrome/Profile 管理，不跟随扩展 Service Worker。SnapInsight 只在发生有效选区交互后按需创建页面级 keeper/template 会话，并在 Chrome 支持时为每次解释调用 `clone()` 保持上下文隔离。完成首次真实请求后，keeper 在当前文档可见期间保持存活，以遵循 Chrome 保留一个空会话来维持模型就绪的性能建议；文档隐藏后保留 5 分钟，导航、刷新或页面卸载时立即回收。仅预热但从未使用的会话仍在 15 秒后回收。
+
+不支持 `clone()` 时，keeper 不承载任何用户请求；每次解释都另行创建并销毁独立请求会话。这样会多占用一个空会话，但同时保持模型就绪和请求上下文隔离。每个标签页文档拥有自己的 keeper，底层模型运行时仍由 Chrome 管理，Session 不能放入 Service Worker 或跨刷新复用。
+
+Chrome 重启或模型运行时空闲卸载后，第一次解释可能包含从磁盘加载模型的冷启动耗时，但这不等于重新下载。只有 `LanguageModel.availability()` 返回 `downloadable` 或 `downloading` 时，产品才将其视为下载阶段。
+
 ## 官方参考
 
 - https://developer.chrome.com/docs/ai/prompt-api
+- https://developer.chrome.com/docs/ai/session-management

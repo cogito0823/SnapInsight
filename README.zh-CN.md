@@ -61,6 +61,11 @@ npm run build
 
 使用 `npm run dev` 可持续监听构建。重新构建后，需要在 `chrome://extensions` 中重新加载扩展，并刷新测试网页。
 
+如需在本地诊断延迟，请在 Chrome DevTools 中选择扩展的 Content Script
+上下文，并设置 `globalThis.__snapinsightPromptPerformanceDebug__ = true`。
+控制台事件仅包含阶段、耗时、热路径或降级路径、缓存/预热状态、模式和结果，
+不会包含选中文字、prompt、输出、页面 URL 或页面身份。
+
 本地和 CI 验证构建保持当前 Manifest 版本不变，通过 Git commit SHA 区分。
 只有发布 Pull Request 才更新正式版本号，只有版本 tag 才创建 GitHub Release。
 完整约定参见[开发与发布流程](docs/product/release-process.md)和
@@ -73,14 +78,15 @@ npm run build
   └── Content Script
         ├── 选区检测
         ├── Shadow DOM 解释卡片
-        └── Chrome Prompt API 会话
+        └── 页面级 Prompt API 会话池
+              ├── 相互隔离的请求会话
               └── Chrome 管理的设备端模型
 
 Manifest V3 Service Worker
   └── 安装流程与工具栏入口
 ```
 
-推理直接运行在 Content Script 的扩展隔离世界中。选区、生成、流式输出和取消均保留在当前页面实例内；Service Worker 不转发模型请求。
+推理直接运行在 Content Script 的扩展隔离世界中。有效选区可以预热页面级模板会话；模板完成首次真实请求后，会在当前文档可见期间保持存活，让 Chrome 的模型运行时尽量维持就绪。文档隐藏后有 5 分钟宽限期，导航或页面销毁时立即释放。每次解释在 Chrome 支持时使用相互隔离的克隆会话；不支持克隆时，keeper 保持不变，并为请求另建独立会话。Service Worker 不转发模型请求。
 
 ## 隐私与权限
 

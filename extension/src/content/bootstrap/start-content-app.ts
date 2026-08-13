@@ -5,9 +5,15 @@ import {
 } from "./page-instance";
 import {
   cancelPromptExplanation,
-  startPromptExplanation
+  disposePromptResources,
+  handlePromptPageVisibility,
+  type PromptLoadingStage,
+  startPromptExplanation,
+  warmUpPromptModel
 } from "../prompt-api/prompt-client";
+import { createPromptWarmupScheduler } from "../prompt-api/prompt-warmup";
 import type { ExplanationEventMessage } from "../../shared/contracts/events";
+import { createExtensionError } from "../../shared/errors/error-codes";
 import { readSelection } from "../selection/read-selection";
 import { validateSelection } from "../selection/validate-selection";
 import {
@@ -60,12 +66,20 @@ async function copyText(text: string): Promise<void> {
 interface ContentViewState {
   shortDispatchPending: boolean;
   detailDispatchPending: boolean;
+  shortLoadingStage: PromptLoadingStage;
+  detailLoadingStage: PromptLoadingStage;
+  shortCancelAvailable: boolean;
+  detailCancelAvailable: boolean;
 }
 
 function createInitialViewState(): ContentViewState {
   return {
     shortDispatchPending: false,
-    detailDispatchPending: false
+    detailDispatchPending: false,
+    shortLoadingStage: "generating",
+    detailLoadingStage: "generating",
+    shortCancelAvailable: false,
+    detailCancelAvailable: false
   };
 }
 
@@ -83,6 +97,23 @@ export function startContentApp(): void {
   let interactionVersion = 0;
   let shortDispatchVersion = 0;
   let detailDispatchVersion = 0;
+  let pendingShortRequestId: string | null = null;
+  let pendingDetailRequestId: string | null = null;
+  const promptWarmupScheduler = createPromptWarmupScheduler(warmUpPromptModel);
+
+  const cancelScheduledWarmup = (): void => promptWarmupScheduler.cancel();
+
+  const scheduleWarmup = (): void => {
+    cancelScheduledWarmup();
+    if (
+      state.cardPhase !== "triggerVisible" ||
+      !pendingSelection ||
+      document.visibilityState !== "visible"
+    ) {
+      return;
+    }
+    promptWarmupScheduler.schedule();
+  };
 
   const clearPendingSelection = (): void => {
     pendingSelection = null;
@@ -138,6 +169,7 @@ export function startContentApp(): void {
       },
       {
         onTriggerHover: () => {
+          cancelScheduledWarmup();
           const liveSelection = resolveValidLiveSelection();
           const next = acceptLiveSelectionForOpen(state, liveSelection);
           pendingSelection = next.pendingSelection;
@@ -163,6 +195,12 @@ export function startContentApp(): void {
         },
         onRetryDetail: () => {
           regenerateDetailExplanation();
+        },
+        onCancelShort: () => {
+          cancelShortFromUi();
+        },
+        onCancelDetail: () => {
+          cancelDetailFromUi();
         },
         onCopyShort: () => {
           void copyText(state.shortRequestState.textBuffer);
@@ -270,8 +308,66 @@ export function startContentApp(): void {
   };
 
   const cancelActiveRequests = (snapshotState: ContentCardState): void => {
+    if (pendingShortRequestId) {
+      cancelPromptExplanation(pendingShortRequestId);
+      pendingShortRequestId = null;
+    }
+    if (pendingDetailRequestId) {
+      cancelPromptExplanation(pendingDetailRequestId);
+      pendingDetailRequestId = null;
+    }
     cancelActiveShortRequest(snapshotState);
     cancelActiveDetailRequest(snapshotState);
+  };
+
+  const cancelledError = () =>
+    createExtensionError(
+      "request_cancelled",
+      "The explanation request was cancelled.",
+      true
+    );
+
+  const cancelShortFromUi = (): void => {
+    const requestId =
+      pendingShortRequestId ?? state.shortRequestState.requestId;
+    if (!requestId) return;
+    cancelPromptExplanation(requestId);
+    pendingShortRequestId = null;
+    shortDispatchVersion += 1;
+    replaceViewState({
+      ...viewState,
+      shortDispatchPending: false,
+      shortCancelAvailable: false
+    });
+    setState({
+      ...state,
+      shortRequestState:
+        state.shortRequestState.requestId === requestId
+          ? applyErrorToRequestState(state.shortRequestState, cancelledError())
+          : createErroredRequestState("short", requestId, cancelledError())
+    });
+  };
+
+  const cancelDetailFromUi = (): void => {
+    const requestId =
+      pendingDetailRequestId ?? state.detailRequestState.requestId;
+    if (!requestId) return;
+    cancelPromptExplanation(requestId);
+    pendingDetailRequestId = null;
+    detailDispatchVersion += 1;
+    replaceViewState({
+      ...viewState,
+      detailDispatchPending: false,
+      detailCancelAvailable: false
+    });
+    setState({
+      ...state,
+      detailExpanded: true,
+      detailRequestState:
+        state.detailRequestState.requestId === requestId
+          ? applyErrorToRequestState(state.detailRequestState, cancelledError())
+          : createErroredRequestState("detailed", requestId, cancelledError())
+    });
   };
 
   const dedupeActiveDetailStart = (): boolean => {
@@ -296,10 +392,14 @@ export function startContentApp(): void {
     const pageInstanceId = state.senderContext.pageInstanceId;
     const selectedText = state.selectedText;
     const requestId = crypto.randomUUID();
+    const visibleStartedAt = performance.now();
+    pendingShortRequestId = requestId;
 
     replaceViewState({
       ...viewState,
-      shortDispatchPending: true
+      shortDispatchPending: true,
+      shortLoadingStage: "generating",
+      shortCancelAvailable: false
     });
     render();
 
@@ -308,14 +408,41 @@ export function startContentApp(): void {
       senderContext: state.senderContext,
       text: selectedText,
       mode: "short",
-      onEvent: handleExplanationEvent
+      visibleStartedAt,
+      onEvent: handleExplanationEvent,
+      onStage: (stage) => {
+        if (
+          interactionVersionAtDispatch !== interactionVersion ||
+          dispatchVersion !== shortDispatchVersion ||
+          !matchesCurrentCard(pageInstanceId, selectedText)
+        ) {
+          return;
+        }
+        replaceViewState({ ...viewState, shortLoadingStage: stage });
+        render();
+      },
+      onLongWait: (visible) => {
+        if (
+          interactionVersionAtDispatch !== interactionVersion ||
+          dispatchVersion !== shortDispatchVersion ||
+          !matchesCurrentCard(pageInstanceId, selectedText)
+        ) {
+          return;
+        }
+        replaceViewState({ ...viewState, shortCancelAvailable: visible });
+        render();
+      }
     });
+    if (pendingShortRequestId === requestId) {
+      pendingShortRequestId = null;
+    }
 
     if (
       interactionVersionAtDispatch !== interactionVersion ||
       dispatchVersion !== shortDispatchVersion ||
       !matchesCurrentCard(pageInstanceId, selectedText)
     ) {
+      cancelPromptExplanation(requestId);
       return;
     }
 
@@ -379,13 +506,17 @@ export function startContentApp(): void {
     const pageInstanceId = state.senderContext.pageInstanceId;
     const selectedText = state.selectedText;
     const requestId = crypto.randomUUID();
+    const visibleStartedAt = performance.now();
+    pendingDetailRequestId = requestId;
     if (replaceExisting) {
       cancelActiveDetailRequest(state);
     }
 
     replaceViewState({
       ...viewState,
-      detailDispatchPending: true
+      detailDispatchPending: true,
+      detailLoadingStage: "generating",
+      detailCancelAvailable: false
     });
     setState({
       ...state,
@@ -397,14 +528,41 @@ export function startContentApp(): void {
       senderContext: state.senderContext,
       text: selectedText ?? "",
       mode: "detailed",
-      onEvent: handleExplanationEvent
+      visibleStartedAt,
+      onEvent: handleExplanationEvent,
+      onStage: (stage) => {
+        if (
+          interactionVersionAtDispatch !== interactionVersion ||
+          dispatchVersion !== detailDispatchVersion ||
+          !matchesCurrentCard(pageInstanceId, selectedText ?? "")
+        ) {
+          return;
+        }
+        replaceViewState({ ...viewState, detailLoadingStage: stage });
+        render();
+      },
+      onLongWait: (visible) => {
+        if (
+          interactionVersionAtDispatch !== interactionVersion ||
+          dispatchVersion !== detailDispatchVersion ||
+          !matchesCurrentCard(pageInstanceId, selectedText ?? "")
+        ) {
+          return;
+        }
+        replaceViewState({ ...viewState, detailCancelAvailable: visible });
+        render();
+      }
     });
+    if (pendingDetailRequestId === requestId) {
+      pendingDetailRequestId = null;
+    }
 
     if (
       interactionVersionAtDispatch !== interactionVersion ||
       dispatchVersion !== detailDispatchVersion ||
       !matchesCurrentCard(pageInstanceId, selectedText ?? "")
     ) {
+      cancelPromptExplanation(requestId);
       return;
     }
 
@@ -470,6 +628,7 @@ export function startContentApp(): void {
 
     pendingSelection = next.pendingSelection;
     setState(next.state);
+    scheduleWarmup();
   };
 
   const handleClickAway = (event: MouseEvent): void => {
@@ -567,7 +726,18 @@ export function startContentApp(): void {
   document.addEventListener("mousedown", handleClickAway, true);
   document.addEventListener("keydown", handleKeydown);
   window.addEventListener("resize", render);
+  document.addEventListener("visibilitychange", () => {
+    const hidden = document.visibilityState !== "visible";
+    if (hidden) cancelScheduledWarmup();
+    handlePromptPageVisibility(hidden);
+  });
+  window.addEventListener("pagehide", () => {
+    cancelScheduledWarmup();
+    disposePromptResources();
+  });
   bindPageInstanceNavigation(() => {
+    cancelScheduledWarmup();
+    disposePromptResources();
     clearPendingSelection();
     cancelActiveRequests(state);
     rotateInteractionVersion();

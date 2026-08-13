@@ -61,6 +61,12 @@ npm run build
 
 Use `npm run dev` for watch builds. After rebuilding, reload the extension from `chrome://extensions` and refresh the page being tested.
 
+For local latency diagnosis, select the extension's Content Script context in
+Chrome DevTools and set
+`globalThis.__snapinsightPromptPerformanceDebug__ = true`. Console events report
+only phase, duration, warm/fallback path, cache/prewarm status, mode, and outcome;
+they never include selected text, prompts, output, page URLs, or page identity.
+
 Local and CI validation builds keep the current Manifest version and are
 identified by their Git commit SHA. Only a release pull request changes the
 formal version, and only a version tag creates a GitHub Release. See the
@@ -74,14 +80,15 @@ Webpage
   └── Content Script
         ├── selection detection
         ├── Shadow DOM explanation card
-        └── Chrome Prompt API session
+        └── page-scoped Prompt API session pool
+              ├── isolated request sessions
               └── Chrome-managed on-device model
 
 Manifest V3 Service Worker
   └── installation flow and toolbar entry point
 ```
 
-Inference runs directly in the Content Script's isolated world. Selection, generation, streaming, and cancellation stay within the current page instance. The Service Worker does not proxy model requests.
+Inference runs directly in the Content Script's isolated world. A valid selection can warm a page-scoped template session. After its first real request, that unprompted template stays alive while the document is visible to keep Chrome's model runtime ready; hidden documents release it after a five-minute grace period, while navigation and page teardown release it immediately. Individual explanations use isolated clones when Chrome supports cloning, or separately created request sessions while the keeper remains untouched. The Service Worker does not proxy model requests.
 
 ## Privacy and permissions
 

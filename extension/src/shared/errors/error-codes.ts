@@ -6,6 +6,10 @@ export const EXTENSION_ERROR_CODES = [
   "device_unsupported",
   "language_unsupported",
   "quota_exceeded",
+  "readiness_timeout",
+  "model_startup_timeout",
+  "first_token_timeout",
+  "stream_stalled",
   "invalid_request",
   "request_failed",
   "request_cancelled"

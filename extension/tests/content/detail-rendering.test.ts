@@ -32,6 +32,8 @@ const callbacks: RenderCallbacks = {
   onRetryShort: () => {},
   onExpandDetail: () => {},
   onRetryDetail: () => {},
+  onCancelShort: () => {},
+  onCancelDetail: () => {},
   onCopyShort: () => {},
   onCopyDetail: () => {},
   onOpenSetup: () => {}
@@ -157,5 +159,30 @@ test("first-run model error links to the device status page", () => {
     assert.match(root.innerHTML, /id="snapinsight-open-setup"/);
   } finally {
     restore();
+  }
+});
+
+test("long-running generation exposes an explicit cancel action", () => {
+  const restoreWindow = installMockWindow();
+  try {
+    const root = createMockRoot();
+    renderContentApp(
+      root,
+      {
+        ...createOpenState(),
+        shortRequestState: createStartingRequestState("short", "short-cancel")
+      },
+      { anchorRect },
+      {
+        shortDispatchPending: true,
+        detailDispatchPending: false,
+        shortCancelAvailable: true
+      },
+      callbacks
+    );
+    assert.match(root.innerHTML, /snapinsight-cancel-short/);
+    assert.match(root.innerHTML, /取消生成/);
+  } finally {
+    restoreWindow();
   }
 });
