@@ -1,4 +1,4 @@
-# SnapInsight
+# SnapInsight — On-device AI Explanations
 
 SnapInsight 是一个 Chrome 扩展：选中网页中的短文本，将鼠标悬停到选区旁的 `SI` 按钮上，即可通过 Chrome 设备端 Prompt API 获得分层解释。
 
@@ -16,7 +16,7 @@ SnapInsight 是一个 Chrome 扩展：选中网页中的短文本，将鼠标悬
 
 当前版本仅把用户明确选中的文字交给设备端模型，不采集页面标题、相邻段落或其他页面上下文。
 
-## 运行要求
+## 运行要求与限制
 
 - Chrome 138 或更高版本
 - 满足 Chrome 内置 AI 的设备、存储空间和地区要求
@@ -24,11 +24,13 @@ SnapInsight 是一个 Chrome 扩展：选中网页中的短文本，将鼠标悬
 
 Chrome Prompt API 的设备覆盖和语言支持会随浏览器版本变化。中文已在真实 Chrome 中验证可用，但仍不属于 SnapInsight 能独立保证的浏览器能力。
 
+扩展只在允许 Content Script 注入的普通网页中工作，不支持 `chrome://` 页面、Chrome Web Store 页面等浏览器受限页面。`file://` 页面还需要用户在扩展管理页单独允许访问文件网址。
+
 ## 开发与安装
 
 ```bash
 cd extension
-npm install
+npm ci
 npm run check
 npm test
 npm run build
@@ -57,13 +59,17 @@ Manifest V3 Service Worker
 
 Prompt API 直接运行在 Content Script 的扩展隔离世界中。选词、生成、流式渲染和取消都保持在当前页面实例内；Service Worker 不参与推理，只负责首次安装和工具栏入口。
 
-## 隐私边界
+## 权限与隐私边界
 
 - Content Script 只读取用户选中的文字和选区坐标
 - 不采集页面上下文
-- Manifest 不声明网站 `host_permissions`
 - 不访问 SnapInsight 服务器或第三方模型 API
+- 不保存选中文字或生成结果，不使用遥测、广告 SDK 或远程代码
 - 模型下载和运行由 Chrome 管理
+
+为了让用户在任意普通网页选词后无需先点击工具栏按钮即可看到 `SI` 入口，Manifest 使用 `content_scripts.matches: ["<all_urls>"]`。Chrome Web Store 会将其视为“所有网站”的访问范围。该范围仅用于检测用户主动创建的文字选区、获取选区坐标并渲染解释卡片；扩展不读取相邻段落、页面标题、表单内容或浏览历史。
+
+Manifest 没有额外声明 `host_permissions`，也没有申请 `tabs`、`history`、`webRequest`、`offscreen` 等权限。
 
 详见 [兼容性基线](docs/product/compatibility.md)、[隐私说明](docs/product/privacy-policy.md) 和 [发布清单](docs/product/chrome-web-store-checklist.md)。
 
