@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reading Sample</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #172033;
+        background: #f4f7fc;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        background:
+          radial-gradient(circle at 20% 10%, rgba(63, 119, 255, 0.1), transparent 30rem),
+          #f4f7fc;
+      }
+
+      main {
+        width: min(920px, calc(100% - 80px));
+        margin: 0 auto;
+        padding: 76px 0;
+      }
+
+      article {
+        min-height: 640px;
+        padding: 54px 64px;
+        border: 1px solid #e3e9f4;
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 24px 70px rgba(40, 64, 120, 0.1);
+      }
+
+      .eyebrow {
+        margin: 0 0 18px;
+        color: #3973e8;
+        font-size: 13px;
+        font-weight: 750;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 680px;
+        margin: 0;
+        color: #14213d;
+        font-size: 42px;
+        line-height: 1.14;
+        letter-spacing: -0.035em;
+      }
+
+      .lead {
+        max-width: 720px;
+        margin: 30px 0 0;
+        color: #35415b;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 22px;
+        line-height: 1.72;
+      }
+
+      .hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 34px;
+        padding: 9px 13px;
+        border-radius: 999px;
+        color: #65718a;
+        background: #f2f5fa;
+        font-size: 13px;
+      }
+
+      .hint::before {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #43dcb8;
+        content: "";
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article>
+        <p class="eyebrow">Reading sample</p>
+        <h1>How plants turn sunlight into life</h1>
+        <p class="lead">
+          Through photosynthesis, plants capture energy from sunlight and use it to transform water and carbon dioxide into the sugars that sustain nearly every ecosystem on Earth.
+        </p>
+        <p class="hint">Select a word to understand it instantly</p>
+      </article>
+    </main>
+  </body>
+</html>
