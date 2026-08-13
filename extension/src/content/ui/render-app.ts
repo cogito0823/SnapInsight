@@ -2,6 +2,7 @@ import type { ContentCardState } from "../state/card-state";
 import type { AnchorRect } from "../anchor/normalize-rect";
 import type { ExtensionError } from "../../shared/errors/error-codes";
 import { renderMarkdownToHtml } from "./markdown";
+import { getUiLanguage, t } from "../../shared/i18n";
 
 const TRIGGER_SIZE = 28;
 const CARD_WIDTH = 456;
@@ -112,7 +113,7 @@ function renderTrigger(anchorRect: AnchorRect): string {
     <button
       id="snapinsight-trigger"
       type="button"
-      aria-label="打开 SnapInsight 解释卡片"
+      aria-label="${t("cardOpen")}"
       style="${computeTriggerStyle(anchorRect)}"
     >
       SI
@@ -128,11 +129,11 @@ function renderCard(state: ContentCardState, bodyMarkup: string): string {
   const selectionText = escapeHtml(state.selectedText ?? "");
 
   return `
-    <section id="snapinsight-card" role="dialog" aria-label="SnapInsight 解释" style="${computeCardStyle(
+    <section id="snapinsight-card" role="dialog" aria-label="${t("cardLabel")}" style="${computeCardStyle(
       state.selectionAnchorRect
     )}">
       <header class="snapinsight-card-header">
-        <button id="snapinsight-close" type="button" aria-label="关闭卡片">×</button>
+        <button id="snapinsight-close" type="button" aria-label="${t("cardClose")}">×</button>
       </header>
       <div id="snapinsight-card-selection" class="snapinsight-card-selection">${selectionText}</div>
       <div id="snapinsight-card-body" class="snapinsight-card-body">${bodyMarkup}</div>
@@ -204,19 +205,19 @@ function renderSectionHeader(
 function describeError(error: ExtensionError): string {
   switch (error.code) {
     case "service_unavailable":
-      return "Chrome 设备端模型暂时不可用，请稍后重试。";
+      return t("errorServiceUnavailable");
     case "prompt_api_unavailable":
-      return "当前 Chrome 未提供 Prompt API，请更新浏览器。";
+      return t("errorPromptApiUnavailable");
     case "model_download_required":
-      return "首次使用前需要先准备 Chrome 设备端模型。";
+      return t("errorModelDownloadRequired");
     case "model_downloading":
-      return "Chrome 正在下载设备端模型，请等待完成后重试。";
+      return t("errorModelDownloading");
     case "device_unsupported":
-      return "当前设备不符合 Chrome 设备端模型的运行要求。";
+      return t("errorDeviceUnsupported");
     case "language_unsupported":
-      return "当前 Chrome 设备端模型暂不支持这段文字的语言。";
+      return t("errorLanguageUnsupported");
     case "quota_exceeded":
-      return "设备端模型容量暂时不足，请关闭其他生成任务后重试。";
+      return t("errorQuotaExceeded");
     case "request_failed":
       return error.message;
     default:
@@ -235,7 +236,7 @@ function needsSetup(error: ExtensionError): boolean {
 
 function renderSetupButton(error: ExtensionError): string {
   return needsSetup(error)
-    ? `<button id="snapinsight-open-setup" type="button" class="snapinsight-primary-button">打开设备状态</button>`
+    ? `<button id="snapinsight-open-setup" type="button" class="snapinsight-primary-button">${t("openDeviceStatus")}</button>`
     : "";
 }
 
@@ -246,7 +247,7 @@ function renderRetryButton(error: ExtensionError): string {
 
   return `
     <button id="snapinsight-retry-short" type="button" class="snapinsight-secondary-button">
-      重试
+      ${t("retry")}
     </button>
   `;
 }
@@ -258,7 +259,7 @@ function renderDetailRetryButton(error: ExtensionError): string {
 
   return `
     <button id="snapinsight-retry-detail" type="button" class="snapinsight-secondary-button">
-      重试详细解释
+      ${t("detailRetry")}
     </button>
   `;
 }
@@ -270,27 +271,27 @@ function renderShortSection(
   const request = state.shortRequestState;
 
   if (viewState.shortDispatchPending || request.phase === "starting") {
-    return renderLoadingState("正在生成简短解释...");
+    return renderLoadingState(t("shortGenerating"));
   }
 
   if (request.phase === "streaming" || request.phase === "completed") {
     return `
       <div class="snapinsight-short-section">
         ${renderSectionHeader(
-          "简短解释",
+          t("shortLabel"),
           "short",
           renderActionGroup(
-            renderCopyButton("snapinsight-copy-short", "复制简短解释"),
+            renderCopyButton("snapinsight-copy-short", t("shortCopy")),
             renderSectionActionButton(
               "snapinsight-regenerate-short",
-              "重新生成简短解释"
+              t("shortRegenerate")
             )
           )
         )}
-        ${renderResponseContent(request.textBuffer, "正在生成解释...")}
+        ${renderResponseContent(request.textBuffer, t("explanationGenerating"))}
         ${
           request.phase === "streaming"
-            ? '<div class="snapinsight-footnote">内容正在持续生成...</div>'
+            ? `<div class="snapinsight-footnote">${t("contentStreaming")}</div>`
             : ""
         }
       </div>
@@ -300,7 +301,7 @@ function renderShortSection(
   if (request.phase === "error" && request.errorState) {
     return `
       <div class="snapinsight-blocked-state">
-        <div class="snapinsight-blocked-title">解释暂时不可用</div>
+        <div class="snapinsight-blocked-title">${t("explanationUnavailable")}</div>
         ${
           request.textBuffer
             ? renderResponseContent(request.textBuffer, "")
@@ -315,7 +316,7 @@ function renderShortSection(
     `;
   }
 
-  return renderLoadingState("正在准备解释请求...");
+  return renderLoadingState(t("explanationPreparing"));
 }
 
 function renderDetailAction(state: ContentCardState): string {
@@ -328,7 +329,7 @@ function renderDetailAction(state: ContentCardState): string {
       class="snapinsight-secondary-button snapinsight-detail-action"
       ${canExpand ? "" : "disabled"}
     >
-      查看更多
+      ${t("viewMore")}
     </button>
   `;
 }
@@ -346,8 +347,8 @@ function renderDetailSection(
   if (viewState.detailDispatchPending || request.phase === "starting") {
     return `
       <div class="snapinsight-detail-section">
-        ${renderSectionHeader("详细解释", "detail")}
-        ${renderLoadingState("正在生成更完整的解释...")}
+        ${renderSectionHeader(t("detailLabel"), "detail")}
+        ${renderLoadingState(t("detailGenerating"))}
       </div>
     `;
   }
@@ -356,20 +357,20 @@ function renderDetailSection(
     return `
       <div class="snapinsight-detail-section">
         ${renderSectionHeader(
-          "详细解释",
+          t("detailLabel"),
           "detail",
           renderActionGroup(
-            renderCopyButton("snapinsight-copy-detail", "复制详细解释"),
+            renderCopyButton("snapinsight-copy-detail", t("detailCopy")),
             renderSectionActionButton(
               "snapinsight-regenerate-detail",
-              "重新生成详细解释"
+              t("detailRegenerate")
             )
           )
         )}
-        ${renderResponseContent(request.textBuffer, "正在生成更完整的解释...")}
+        ${renderResponseContent(request.textBuffer, t("detailGenerating"))}
         ${
           request.phase === "streaming"
-            ? '<div class="snapinsight-footnote">详细解释正在持续生成...</div>'
+            ? `<div class="snapinsight-footnote">${t("detailStreaming")}</div>`
             : ""
         }
       </div>
@@ -379,7 +380,7 @@ function renderDetailSection(
   if (request.phase === "error" && request.errorState) {
     return `
       <div class="snapinsight-detail-section">
-        ${renderSectionHeader("详细解释", "detail")}
+        ${renderSectionHeader(t("detailLabel"), "detail")}
         <div class="snapinsight-blocked-state">
           ${
             request.textBuffer
@@ -398,8 +399,8 @@ function renderDetailSection(
 
   return `
     <div class="snapinsight-detail-section">
-      ${renderSectionHeader("详细解释", "detail")}
-      ${renderLoadingState("点击查看更多后会在这里展开详细解释。")}
+      ${renderSectionHeader(t("detailLabel"), "detail")}
+      ${renderLoadingState(t("detailHint"))}
     </div>
   `;
 }
@@ -914,7 +915,7 @@ export function renderContentApp(
         }
       }
     </style>
-    <div id="app-shell">
+    <div id="app-shell" lang="${getUiLanguage()}">
       ${triggerAnchor ? renderTrigger(triggerAnchor) : ""}
       ${cardAnchor ? renderCard(state, cardBodyMarkup) : ""}
     </div>
