@@ -71,4 +71,4 @@ SnapInsight 的唯一用途是在普通网页中读取用户明确选中的少�
 
 ## 截图
 
-- `docs/product/store-assets/snapinsight-rag-1280x800.png`
+- 主截图（简短解释 + 详细解释）：`docs/product/store-assets/snapinsight-detail-1280x800.png`
