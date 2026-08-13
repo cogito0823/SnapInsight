@@ -7,6 +7,13 @@ pull request before creating the corresponding Git tag.
 Changelog headings use product versions without a `v` prefix. The `v` prefix
 is reserved for Git tags, such as product version `0.2.7` and tag `v0.2.7`.
 
+## [0.3.1](https://github.com/cogito0823/SnapInsight/compare/v0.3.0...v0.3.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* **extension:** retain Prompt keeper across hidden tabs ([#5](https://github.com/cogito0823/SnapInsight/issues/5)) ([b853854](https://github.com/cogito0823/SnapInsight/commit/b8538543dbfc18efa2bea1308963eb5c7a5236c2))
+
 ## [0.3.0](https://github.com/cogito0823/SnapInsight/compare/v0.2.7...v0.3.0) (2026-08-13)
 
 
