@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SnapInsight">
+  <defs>
+    <linearGradient id="tile" x1="25" y1="20" x2="105" y2="111" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0876FF"/>
+      <stop offset="0.48" stop-color="#0758F2"/>
+      <stop offset="1" stop-color="#0738C8"/>
+    </linearGradient>
+    <radialGradient id="tileGlow" cx="0" cy="0" r="1" gradientTransform="translate(48 38) rotate(51) scale(72 66)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#32A0FF" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#126BFF" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#001E9D" stop-opacity="0.24"/>
+    </radialGradient>
+    <linearGradient id="whiteMark" x1="42" y1="30" x2="83" y2="91" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.68" stop-color="#FCFCFF"/>
+      <stop offset="1" stop-color="#EFF4FF"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="91" y1="90" x2="103" y2="103" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4EF1C6"/>
+      <stop offset="1" stop-color="#2FDDB8"/>
+    </linearGradient>
+    <filter id="markShadow" x="24" y="21" width="88" height="91" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="1.2" stdDeviation="1.3" flood-color="#001A8C" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- 96 px artwork inside a 128 px canvas, as recommended by Chrome Web Store. -->
+  <g>
+    <rect x="16" y="16" width="96" height="96" rx="24" fill="url(#tile)"/>
+    <rect x="16" y="16" width="96" height="96" rx="24" fill="url(#tileGlow)"/>
+  </g>
+
+  <g filter="url(#markShadow)">
+    <!-- Draw the handle behind the ring for a clean, seamless joint. -->
+    <path d="M79.5 77.5 99.5 97.5" fill="none" stroke="url(#whiteMark)" stroke-width="12" stroke-linecap="round"/>
+    <path d="M93.5 91.5 100 98" fill="none" stroke="url(#mint)" stroke-width="12" stroke-linecap="round"/>
+
+    <!-- One compound path forms both the ring and speech-bubble tail. -->
+    <path fill="url(#whiteMark)" fill-rule="evenodd" clip-rule="evenodd" d="
+      M60 27.5
+      A30.5 30.5 0 1 1 60 88.5
+      A30.5 30.5 0 1 1 60 27.5
+      Z
+      M60 37.5
+      A20.5 20.5 0 0 1 80.5 58
+      A20.5 20.5 0 0 1 51 76.4
+      L42 82
+      L42 69.5
+      A20.5 20.5 0 0 1 60 37.5
+      Z
+    "/>
+
+    <circle cx="49" cy="58" r="3.8" fill="url(#mint)"/>
+    <circle cx="60" cy="58" r="3.8" fill="url(#mint)"/>
+    <circle cx="71" cy="58" r="3.8" fill="url(#mint)"/>
+  </g>
+</svg>

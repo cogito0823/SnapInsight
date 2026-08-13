@@ -4,12 +4,9 @@ import {
   createPageInstanceId
 } from "./page-instance";
 import {
-  cancelExplanation,
-  isExplanationEventMessage,
-  persistSelectedModel,
-  requestModelCatalog,
-  requestShortExplanation
-} from "../messaging/worker-client";
+  cancelPromptExplanation,
+  startPromptExplanation
+} from "../prompt-api/prompt-client";
 import type { ExplanationEventMessage } from "../../shared/contracts/events";
 import { readSelection } from "../selection/read-selection";
 import { validateSelection } from "../selection/validate-selection";
@@ -36,34 +33,39 @@ import {
 import { renderContentApp } from "../ui/render-app";
 import { shouldIgnoreCardClickAway } from "../ui/click-away";
 import { ensureShadowRoot } from "../ui/shadow-root";
-import type { ExtensionError } from "../../shared/errors/error-codes";
-import type { ModelSummary } from "../../shared/models/model-summary";
 
 const CONTENT_APP_MARKER = "data-snapinsight-content-app";
+
+async function copyText(text: string): Promise<void> {
+  if (!text.trim()) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    return;
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+}
 
 interface ContentViewState {
   shortDispatchPending: boolean;
   detailDispatchPending: boolean;
-  modelPicker: {
-    phase: "idle" | "loading" | "ready" | "no_models_available" | "error" | "saving";
-    targetArea: "short" | "detail" | null;
-    options: ModelSummary[];
-    selectedModel: string | null;
-    error: ExtensionError | null;
-  };
 }
 
 function createInitialViewState(): ContentViewState {
   return {
     shortDispatchPending: false,
-    detailDispatchPending: false,
-    modelPicker: {
-      phase: "idle",
-      targetArea: null,
-      options: [],
-      selectedModel: null,
-      error: null
-    }
+    detailDispatchPending: false
   };
 }
 
@@ -81,8 +83,6 @@ export function startContentApp(): void {
   let interactionVersion = 0;
   let shortDispatchVersion = 0;
   let detailDispatchVersion = 0;
-  let modelPickerDispatchVersion = 0;
-  let modelPickerInteracting = false;
 
   const clearPendingSelection = (): void => {
     pendingSelection = null;
@@ -93,25 +93,13 @@ export function startContentApp(): void {
   };
 
   const resetViewState = (): void => {
-    modelPickerInteracting = false;
     replaceViewState(createInitialViewState());
-  };
-
-  const markModelPickerInteractionStart = (): void => {
-    modelPickerInteracting = true;
-  };
-
-  const markModelPickerInteractionEnd = (): void => {
-    globalThis.setTimeout(() => {
-      modelPickerInteracting = false;
-    }, 0);
   };
 
   const rotateInteractionVersion = (): number => {
     interactionVersion += 1;
     shortDispatchVersion += 1;
     detailDispatchVersion += 1;
-    modelPickerDispatchVersion += 1;
     return interactionVersion;
   };
 
@@ -146,8 +134,7 @@ export function startContentApp(): void {
       },
       {
         shortDispatchPending: viewState.shortDispatchPending,
-        detailDispatchPending: viewState.detailDispatchPending,
-        modelPicker: viewState.modelPicker
+        detailDispatchPending: viewState.detailDispatchPending
       },
       {
         onTriggerHover: () => {
@@ -177,25 +164,14 @@ export function startContentApp(): void {
         onRetryDetail: () => {
           regenerateDetailExplanation();
         },
-        onModelSelectionChange: (modelId) => {
-          replaceViewState({
-            ...viewState,
-            modelPicker: {
-              ...viewState.modelPicker,
-              selectedModel: modelId,
-              error: null
-            }
-          });
-          render();
+        onCopyShort: () => {
+          void copyText(state.shortRequestState.textBuffer);
         },
-        onSaveModelSelection: () => {
-          void saveSelectedModelAndRetry();
+        onCopyDetail: () => {
+          void copyText(state.detailRequestState.textBuffer);
         },
-        onModelSelectionInteractionStart: () => {
-          markModelPickerInteractionStart();
-        },
-        onModelSelectionInteractionEnd: () => {
-          markModelPickerInteractionEnd();
+        onOpenSetup: () => {
+          void chrome.runtime.openOptionsPage();
         }
       }
     );
@@ -273,8 +249,7 @@ export function startContentApp(): void {
     state.activeModel !== null;
 
   const cancelActiveRequest = (
-    requestState: ContentCardState["shortRequestState"] | ContentCardState["detailRequestState"],
-    senderContext: ContentCardState["senderContext"]
+    requestState: ContentCardState["shortRequestState"] | ContentCardState["detailRequestState"]
   ): void => {
     if (
       !requestState.requestId ||
@@ -283,18 +258,15 @@ export function startContentApp(): void {
       return;
     }
 
-    void cancelExplanation({
-      requestId: requestState.requestId,
-      senderContext
-    });
+    cancelPromptExplanation(requestState.requestId);
   };
 
   const cancelActiveShortRequest = (snapshotState: ContentCardState): void => {
-    cancelActiveRequest(snapshotState.shortRequestState, snapshotState.senderContext);
+    cancelActiveRequest(snapshotState.shortRequestState);
   };
 
   const cancelActiveDetailRequest = (snapshotState: ContentCardState): void => {
-    cancelActiveRequest(snapshotState.detailRequestState, snapshotState.senderContext);
+    cancelActiveRequest(snapshotState.detailRequestState);
   };
 
   const cancelActiveRequests = (snapshotState: ContentCardState): void => {
@@ -314,77 +286,7 @@ export function startContentApp(): void {
     return false;
   };
 
-  const loadModelPicker = async (targetArea: "short" | "detail"): Promise<void> => {
-    const interactionVersionAtDispatch = interactionVersion;
-    const dispatchVersion = ++modelPickerDispatchVersion;
-    const pageInstanceId = state.senderContext.pageInstanceId;
-    const selectedText = state.selectedText;
-
-    replaceViewState({
-      ...viewState,
-      modelPicker: {
-        phase: "loading",
-        targetArea,
-        options: [],
-        selectedModel: null,
-        error: null
-      }
-    });
-    render();
-
-    const response = await requestModelCatalog();
-    if (
-      interactionVersionAtDispatch !== interactionVersion ||
-      dispatchVersion !== modelPickerDispatchVersion ||
-      !matchesCurrentCard(pageInstanceId, selectedText ?? "")
-    ) {
-      return;
-    }
-
-    if (!response.ok) {
-      replaceViewState({
-        ...viewState,
-        modelPicker: {
-          phase: "error",
-          targetArea,
-          options: [],
-          selectedModel: null,
-          error: response.error
-        }
-      });
-      render();
-      return;
-    }
-
-    if (response.data.state === "no_models_available") {
-      replaceViewState({
-        ...viewState,
-        modelPicker: {
-          phase: "no_models_available",
-          targetArea,
-          options: [],
-          selectedModel: null,
-          error: null
-        }
-      });
-      render();
-      return;
-    }
-
-    replaceViewState({
-      ...viewState,
-      modelPicker: {
-        phase: "ready",
-        targetArea,
-        options: response.data.models,
-        selectedModel: response.data.models[0]?.id ?? null,
-        error: null
-      }
-    });
-    render();
-  };
-
-  const startShortExplanation = async (modelOverride?: string): Promise<void> => {
+  const startShortExplanation = async (): Promise<void> => {
     if (state.cardPhase !== "open" || !state.selectedText) {
       return;
     }
@@ -401,12 +303,12 @@ export function startContentApp(): void {
     });
     render();
 
-    const response = await requestShortExplanation({
+    const response = await startPromptExplanation({
       requestId,
       senderContext: state.senderContext,
       text: selectedText,
       mode: "short",
-      ...(modelOverride ? { model: modelOverride } : {})
+      onEvent: handleExplanationEvent
     });
 
     if (
@@ -426,10 +328,6 @@ export function startContentApp(): void {
         ...state,
         shortRequestState: createErroredRequestState("short", requestId, response.error)
       });
-
-      if (response.error.code === "selected_model_unavailable") {
-        void loadModelPicker("short");
-      }
       return;
     }
 
@@ -439,7 +337,7 @@ export function startContentApp(): void {
     });
     setState({
       ...state,
-      shortRequestState: createStartingRequestState("short", response.data.requestId)
+      shortRequestState: createStartingRequestState("short", response.requestId)
     });
   };
 
@@ -458,11 +356,10 @@ export function startContentApp(): void {
       detailRequestState: createIdleRequestState("detailed")
     };
     render();
-    void startShortExplanation(state.activeModel ?? undefined);
+    void startShortExplanation();
   };
 
   const startDetailExplanation = async (
-    modelOverride?: string,
     replaceExisting: boolean = false
   ): Promise<void> => {
     if (!canStartDetailRequest()) {
@@ -482,8 +379,6 @@ export function startContentApp(): void {
     const pageInstanceId = state.senderContext.pageInstanceId;
     const selectedText = state.selectedText;
     const requestId = crypto.randomUUID();
-    const effectiveModelOverride = modelOverride ?? state.activeModel ?? undefined;
-
     if (replaceExisting) {
       cancelActiveDetailRequest(state);
     }
@@ -497,12 +392,12 @@ export function startContentApp(): void {
       detailExpanded: true
     });
 
-    const response = await requestShortExplanation({
+    const response = await startPromptExplanation({
       requestId,
       senderContext: state.senderContext,
       text: selectedText ?? "",
       mode: "detailed",
-      ...(effectiveModelOverride ? { model: effectiveModelOverride } : {})
+      onEvent: handleExplanationEvent
     });
 
     if (
@@ -527,9 +422,6 @@ export function startContentApp(): void {
           response.error
         )
       });
-      if (response.error.code === "selected_model_unavailable") {
-        void loadModelPicker("detail");
-      }
       return;
     }
 
@@ -542,7 +434,7 @@ export function startContentApp(): void {
       detailExpanded: true,
       detailRequestState: createStartingRequestState(
         "detailed",
-        response.data.requestId
+        response.requestId
       )
     });
   };
@@ -561,67 +453,7 @@ export function startContentApp(): void {
       detailRequestState: createIdleRequestState("detailed")
     };
     render();
-    void startDetailExplanation(state.activeModel ?? undefined, true);
-  };
-
-  const saveSelectedModelAndRetry = async (): Promise<void> => {
-    const selectedModel = viewState.modelPicker.selectedModel;
-    if (!selectedModel || state.cardPhase !== "open") {
-      return;
-    }
-
-    const retryTargetArea = viewState.modelPicker.targetArea ?? "short";
-    const interactionVersionAtDispatch = interactionVersion;
-    const dispatchVersion = ++modelPickerDispatchVersion;
-    replaceViewState({
-      ...viewState,
-      modelPicker: {
-        ...viewState.modelPicker,
-        phase: "saving",
-        error: null
-      }
-    });
-    render();
-
-    const response = await persistSelectedModel(selectedModel);
-    if (
-      interactionVersionAtDispatch !== interactionVersion ||
-      dispatchVersion !== modelPickerDispatchVersion ||
-      state.cardPhase !== "open"
-    ) {
-      return;
-    }
-
-    if (!response.ok) {
-      replaceViewState({
-        ...viewState,
-        modelPicker: {
-          ...viewState.modelPicker,
-          phase: "ready",
-          error: response.error
-        }
-      });
-      render();
-
-      if (response.error.code === "selected_model_unavailable") {
-        void loadModelPicker(viewState.modelPicker.targetArea ?? "short");
-      }
-      return;
-    }
-
-    replaceViewState({
-      ...viewState,
-      modelPicker: {
-        ...createInitialViewState().modelPicker
-      }
-    });
-    render();
-    if (retryTargetArea === "detail") {
-      void startDetailExplanation(selectedModel, true);
-      return;
-    }
-
-    void startShortExplanation(selectedModel);
+    void startDetailExplanation(true);
   };
 
   const applySelection = (): void => {
@@ -646,12 +478,7 @@ export function startContentApp(): void {
     }
 
     if (
-      shouldIgnoreCardClickAway(
-        event,
-        shadowRootHandle.host,
-        shadowRootHandle.root,
-        modelPickerInteracting
-      )
+      shouldIgnoreCardClickAway(event, shadowRootHandle.host)
     ) {
       return;
     }
@@ -663,11 +490,18 @@ export function startContentApp(): void {
     setState(resetCardInteraction(state));
   };
 
-  const handleWorkerEvent = (message: unknown): void => {
-    if (!isExplanationEventMessage(message)) {
+  const handleKeydown = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape" || state.cardPhase !== "open") {
       return;
     }
+    clearPendingSelection();
+    cancelActiveRequests(state);
+    rotateInteractionVersion();
+    resetViewState();
+    setState(resetCardInteraction(state));
+  };
 
+  const handleExplanationEvent = (message: ExplanationEventMessage): void => {
     if (!matchesShortRequestEvent(message) && !matchesDetailRequestEvent(message)) {
       return;
     }
@@ -714,9 +548,6 @@ export function startContentApp(): void {
         } as ContentCardState);
         break;
       case "error":
-        if (message.payload.event.error.code === "selected_model_unavailable") {
-          void loadModelPicker(isShortEvent ? "short" : "detail");
-        }
         setState({
           ...state,
           [requestKey]: applyErrorToRequestState(
@@ -734,11 +565,7 @@ export function startContentApp(): void {
   document.addEventListener("mouseup", applySelection);
   document.addEventListener("keyup", applySelection);
   document.addEventListener("mousedown", handleClickAway, true);
-  chrome.runtime.onMessage.addListener((message) => {
-    handleWorkerEvent(message);
-    return false;
-  });
-
+  document.addEventListener("keydown", handleKeydown);
   bindPageInstanceNavigation(() => {
     clearPendingSelection();
     cancelActiveRequests(state);

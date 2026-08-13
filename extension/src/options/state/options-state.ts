@@ -1,37 +1,21 @@
-import type { ExtensionError } from "../../shared/errors/error-codes";
-import type {
-  ModelCatalogState,
-  ModelSummary
-} from "../../shared/models/model-summary";
+import type { PromptReadinessState } from "../../prompt-api/readiness";
 
-export type OptionsLoadingPhase = "idle" | "loading" | "ready" | "error";
+export type OptionsPhase =
+  | "checking"
+  | "preparing"
+  | PromptReadinessState
+  | "error";
 
 export interface OptionsState {
-  selectedModelDraft: string | null;
-  persistedSelectedModel: string | null;
-  availableModels: ModelSummary[];
-  modelCatalogState: ModelCatalogState | null;
-  loadingPhase: OptionsLoadingPhase;
-  loadError: ExtensionError | null;
-  saveError: ExtensionError | null;
-  saveSuccessMessage: string | null;
-  isSaving: boolean;
-  lastKnownModels: ModelSummary[];
-  lastModelRefreshAt: string | null;
+  phase: OptionsPhase;
+  progress: number | null;
+  errorMessage: string | null;
 }
 
 export function createInitialOptionsState(): OptionsState {
   return {
-    selectedModelDraft: null,
-    persistedSelectedModel: null,
-    availableModels: [],
-    modelCatalogState: null,
-    loadingPhase: "idle",
-    loadError: null,
-    saveError: null,
-    saveSuccessMessage: null,
-    isSaving: false,
-    lastKnownModels: [],
-    lastModelRefreshAt: null
+    phase: "checking",
+    progress: null,
+    errorMessage: null
   };
 }

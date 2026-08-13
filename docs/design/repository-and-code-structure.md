@@ -7,11 +7,13 @@
   - `docs/rfcs/RFC-001-extension-architecture.md`
   - `docs/rfcs/RFC-002-local-communication-and-security.md`
   - `docs/rfcs/RFC-003-python-service-and-ollama-integration.md`
+  - `docs/rfcs/RFC-006-local-companion-app-architecture.md`
   - `docs/design/extension-and-local-service-design.md`
   - `docs/design/implementation-design/worker-settings-and-local-api-implementation-design.md`
   - `docs/design/implementation-design/options-page-and-settings-surface-implementation-design.md`
   - `docs/design/implementation-design/content-script-interaction-implementation-design.md`
   - `docs/design/implementation-design/server-streaming-and-orchestration-implementation-design.md`
+  - `docs/design/implementation-design/companion-app-mvp-implementation-design.md`
   - `docs/specs/api-spec.md`
   - `docs/specs/extension-state-spec.md`
 
@@ -36,6 +38,7 @@ Recommended top-level layout:
 ```text
 SnapInsight/
   docs/
+  companion/
   extension/
   server/
   scripts/
@@ -46,6 +49,7 @@ SnapInsight/
 Top-level rules:
 
 - `docs/` contains discovery, RFC, design, spec, and implementation planning documents.
+- `companion/` contains the local companion-app runtime and packaging support.
 - `extension/` contains the Chrome extension implementation and build setup.
 - `server/` contains the local Python service implementation and packaging.
 - `scripts/` is optional and should only hold lightweight developer automation scripts.

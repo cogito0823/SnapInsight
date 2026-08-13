@@ -1,7 +1,6 @@
 import type { ContentCardState } from "../state/card-state";
 import type { AnchorRect } from "../anchor/normalize-rect";
 import type { ExtensionError } from "../../shared/errors/error-codes";
-import type { ModelSummary } from "../../shared/models/model-summary";
 import { renderMarkdownToHtml } from "./markdown";
 
 const TRIGGER_SIZE = 28;
@@ -14,28 +13,18 @@ export interface RenderCallbacks {
   onRetryShort: () => void;
   onExpandDetail: () => void;
   onRetryDetail: () => void;
-  onModelSelectionChange: (modelId: string) => void;
-  onSaveModelSelection: () => void;
-  onModelSelectionInteractionStart?: () => void;
-  onModelSelectionInteractionEnd?: () => void;
+  onCopyShort: () => void;
+  onCopyDetail: () => void;
+  onOpenSetup: () => void;
 }
 
 export interface TriggerViewState {
   anchorRect: AnchorRect | null;
 }
 
-export interface ModelPickerViewState {
-  phase: "idle" | "loading" | "ready" | "no_models_available" | "error" | "saving";
-  targetArea: "short" | "detail" | null;
-  options: ModelSummary[];
-  selectedModel: string | null;
-  error: ExtensionError | null;
-}
-
 export interface RequestRenderViewState {
   shortDispatchPending: boolean;
   detailDispatchPending: boolean;
-  modelPicker: ModelPickerViewState;
 }
 
 function escapeHtml(value: string): string {
@@ -139,7 +128,7 @@ function renderCard(state: ContentCardState, bodyMarkup: string): string {
   const selectionText = escapeHtml(state.selectedText ?? "");
 
   return `
-    <section id="snapinsight-card" style="${computeCardStyle(
+    <section id="snapinsight-card" role="dialog" aria-label="SnapInsight 解释" style="${computeCardStyle(
       state.selectionAnchorRect
     )}">
       <header class="snapinsight-card-header">
@@ -185,6 +174,20 @@ function renderSectionActionButton(id: string, label: string): string {
   `;
 }
 
+function renderCopyButton(id: string, label: string): string {
+  return `
+    <button id="${id}" type="button" class="snapinsight-icon-button" aria-label="${label}" title="${label}">
+      <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <path d="M6 3.5A1.5 1.5 0 0 1 7.5 2h7A1.5 1.5 0 0 1 16 3.5v9a1.5 1.5 0 0 1-1.5 1.5H13v1.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 15.5v-9A1.5 1.5 0 0 1 4.5 5H6V3.5Zm2 1.5h3.5A1.5 1.5 0 0 1 13 6.5V12h1V4H8v1Zm3 2H5v8h6V7Z" fill="currentColor"/>
+      </svg>
+    </button>
+  `;
+}
+
+function renderActionGroup(...actions: string[]): string {
+  return `<div class="snapinsight-section-actions">${actions.join("")}</div>`;
+}
+
 function renderSectionHeader(
   text: string,
   tone: "short" | "detail",
@@ -201,18 +204,39 @@ function renderSectionHeader(
 function describeError(error: ExtensionError): string {
   switch (error.code) {
     case "service_unavailable":
-      return "本地服务当前不可用，请先确认 SnapInsight 本地服务已启动。";
-    case "local_service_conflict":
-      return "固定本地端口被其他服务占用，当前无法建立解释请求。";
-    case "selected_model_unavailable":
-      return "当前需要重新选择一个可用模型后才能继续解释。";
-    case "no_models_available":
-      return "当前没有可用模型，请先在 Ollama 中安装模型。";
+      return "Chrome 设备端模型暂时不可用，请稍后重试。";
+    case "prompt_api_unavailable":
+      return "当前 Chrome 未提供 Prompt API，请更新浏览器。";
+    case "model_download_required":
+      return "首次使用前需要先准备 Chrome 设备端模型。";
+    case "model_downloading":
+      return "Chrome 正在下载设备端模型，请等待完成后重试。";
+    case "device_unsupported":
+      return "当前设备不符合 Chrome 设备端模型的运行要求。";
+    case "language_unsupported":
+      return "当前 Chrome 设备端模型暂不支持这段文字的语言。";
+    case "quota_exceeded":
+      return "设备端模型容量暂时不足，请关闭其他生成任务后重试。";
     case "request_failed":
       return error.message;
     default:
       return error.message;
   }
+}
+
+function needsSetup(error: ExtensionError): boolean {
+  return (
+    error.code === "prompt_api_unavailable" ||
+    error.code === "model_download_required" ||
+    error.code === "model_downloading" ||
+    error.code === "device_unsupported"
+  );
+}
+
+function renderSetupButton(error: ExtensionError): string {
+  return needsSetup(error)
+    ? `<button id="snapinsight-open-setup" type="button" class="snapinsight-primary-button">打开设备状态</button>`
+    : "";
 }
 
 function renderRetryButton(error: ExtensionError): string {
@@ -239,101 +263,6 @@ function renderDetailRetryButton(error: ExtensionError): string {
   `;
 }
 
-function renderModelPicker(viewState: ModelPickerViewState): string {
-  switch (viewState.phase) {
-    case "loading":
-      return renderLoadingState("正在加载可用模型...");
-    case "no_models_available":
-      return `
-        <div class="snapinsight-blocked-state">
-          <div class="snapinsight-blocked-title">当前没有可用模型</div>
-          <div class="snapinsight-blocked-message">
-            请先在 Ollama 中安装可用模型，然后再回到当前卡片继续解释。
-          </div>
-        </div>
-      `;
-    case "error":
-      return `
-        <div class="snapinsight-blocked-state">
-          <div class="snapinsight-blocked-title">模型列表暂时不可用</div>
-          <div class="snapinsight-blocked-message">
-            ${escapeHtml(
-              viewState.error?.message ?? "暂时无法加载可用模型。"
-            )}
-          </div>
-        </div>
-      `;
-    case "ready":
-    case "saving": {
-      const optionMarkup = viewState.options
-        .map(
-          (model) => `
-            <button
-              type="button"
-              class="snapinsight-model-option${
-                model.id === viewState.selectedModel ? " is-selected" : ""
-              }"
-              data-model-option="${escapeHtml(model.id)}"
-              ${viewState.phase === "saving" ? "disabled" : ""}
-            >
-              ${escapeHtml(model.label)}
-            </button>
-          `
-        )
-        .join("");
-
-      return `
-        <div class="snapinsight-blocked-state">
-          <div class="snapinsight-blocked-title">请选择一个可用模型</div>
-          <div class="snapinsight-blocked-message">
-            当前解释被阻塞，选择模型并保存后会在这张卡片内继续发起解释。
-          </div>
-          <label class="snapinsight-field-label" for="snapinsight-model-select">
-            可用模型
-          </label>
-          <div
-            id="snapinsight-model-select"
-            class="snapinsight-model-option-list"
-            role="listbox"
-            aria-label="可用模型"
-          >
-            ${optionMarkup}
-          </div>
-          ${
-            viewState.error
-              ? `<div class="snapinsight-inline-error">${escapeHtml(
-                  viewState.error.message
-                )}</div>`
-              : ""
-          }
-          <button
-            id="snapinsight-save-model"
-            type="button"
-            class="snapinsight-primary-button"
-            ${
-              !viewState.selectedModel || viewState.phase === "saving"
-                ? "disabled"
-                : ""
-            }
-          >
-            ${viewState.phase === "saving" ? "保存中..." : "保存并继续解释"}
-          </button>
-        </div>
-      `;
-    }
-    case "idle":
-    default:
-      return `
-        <div class="snapinsight-blocked-state">
-          <div class="snapinsight-blocked-title">需要先选择模型</div>
-          <div class="snapinsight-blocked-message">
-            正在准备可用模型列表...
-          </div>
-        </div>
-      `;
-  }
-}
-
 function renderShortSection(
   state: ContentCardState,
   viewState: RequestRenderViewState
@@ -350,9 +279,12 @@ function renderShortSection(
         ${renderSectionHeader(
           "简短解释",
           "short",
-          renderSectionActionButton(
-            "snapinsight-regenerate-short",
-            "重新生成简短解释"
+          renderActionGroup(
+            renderCopyButton("snapinsight-copy-short", "复制简短解释"),
+            renderSectionActionButton(
+              "snapinsight-regenerate-short",
+              "重新生成简短解释"
+            )
           )
         )}
         ${renderResponseContent(request.textBuffer, "正在生成解释...")}
@@ -366,13 +298,6 @@ function renderShortSection(
   }
 
   if (request.phase === "error" && request.errorState) {
-    if (
-      request.errorState.code === "selected_model_unavailable" &&
-      viewState.modelPicker.targetArea !== "detail"
-    ) {
-      return renderModelPicker(viewState.modelPicker);
-    }
-
     return `
       <div class="snapinsight-blocked-state">
         <div class="snapinsight-blocked-title">解释暂时不可用</div>
@@ -384,6 +309,7 @@ function renderShortSection(
         <div class="snapinsight-blocked-message">
           ${escapeHtml(describeError(request.errorState))}
         </div>
+        ${renderSetupButton(request.errorState)}
         ${renderRetryButton(request.errorState)}
       </div>
     `;
@@ -432,9 +358,12 @@ function renderDetailSection(
         ${renderSectionHeader(
           "详细解释",
           "detail",
-          renderSectionActionButton(
-            "snapinsight-regenerate-detail",
-            "重新生成详细解释"
+          renderActionGroup(
+            renderCopyButton("snapinsight-copy-detail", "复制详细解释"),
+            renderSectionActionButton(
+              "snapinsight-regenerate-detail",
+              "重新生成详细解释"
+            )
           )
         )}
         ${renderResponseContent(request.textBuffer, "正在生成更完整的解释...")}
@@ -448,15 +377,6 @@ function renderDetailSection(
   }
 
   if (request.phase === "error" && request.errorState) {
-    if (request.errorState.code === "selected_model_unavailable") {
-      return `
-        <div class="snapinsight-detail-section">
-          ${renderSectionHeader("详细解释", "detail")}
-          ${renderModelPicker(viewState.modelPicker)}
-        </div>
-      `;
-    }
-
     return `
       <div class="snapinsight-detail-section">
         ${renderSectionHeader("详细解释", "detail")}
@@ -469,6 +389,7 @@ function renderDetailSection(
           <div class="snapinsight-blocked-message">
             ${escapeHtml(describeError(request.errorState))}
           </div>
+          ${renderSetupButton(request.errorState)}
           ${renderDetailRetryButton(request.errorState)}
         </div>
       </div>
@@ -514,6 +435,7 @@ function bindStaticButtons(root: ShadowRoot, callbacks: RenderCallbacks): void {
   const trigger = root.getElementById("snapinsight-trigger");
   if (trigger instanceof HTMLButtonElement) {
     trigger.addEventListener("mouseenter", callbacks.onTriggerHover);
+    trigger.addEventListener("focus", callbacks.onTriggerHover);
   }
 
   const closeButton = root.getElementById("snapinsight-close");
@@ -548,20 +470,19 @@ function bindDynamicButtons(root: ShadowRoot, callbacks: RenderCallbacks): void 
     bindPressAction(regenerateDetailButton, callbacks.onRetryDetail);
   }
 
-  if (typeof root.querySelectorAll === "function") {
-    root.querySelectorAll<HTMLElement>("[data-model-option]").forEach((option) => {
-      const modelId = option.dataset.modelOption;
-      if (modelId) {
-        bindPressAction(option, () => {
-          callbacks.onModelSelectionChange(modelId);
-        });
-      }
-    });
+  const copyShortButton = root.getElementById("snapinsight-copy-short");
+  if (copyShortButton instanceof HTMLButtonElement) {
+    bindPressAction(copyShortButton, callbacks.onCopyShort);
   }
 
-  const saveModelButton = root.getElementById("snapinsight-save-model");
-  if (saveModelButton instanceof HTMLButtonElement) {
-    bindPressAction(saveModelButton, callbacks.onSaveModelSelection);
+  const copyDetailButton = root.getElementById("snapinsight-copy-detail");
+  if (copyDetailButton instanceof HTMLButtonElement) {
+    bindPressAction(copyDetailButton, callbacks.onCopyDetail);
+  }
+
+  const setupButton = root.getElementById("snapinsight-open-setup");
+  if (setupButton instanceof HTMLButtonElement) {
+    bindPressAction(setupButton, callbacks.onOpenSetup);
   }
 }
 
@@ -627,6 +548,11 @@ export function renderContentApp(
 
       button {
         font: inherit;
+      }
+
+      button:focus-visible {
+        outline: 3px solid rgba(37, 99, 235, 0.35);
+        outline-offset: 2px;
       }
 
       #snapinsight-trigger {
@@ -748,6 +674,12 @@ export function renderContentApp(
         align-items: center;
         justify-content: space-between;
         gap: 8px;
+      }
+
+      .snapinsight-section-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
       }
 
       .snapinsight-response-text {
@@ -912,6 +844,7 @@ export function renderContentApp(
         border: 0;
         background: #2563eb;
         color: #fff;
+        justify-self: start;
       }
 
       .snapinsight-primary-button:disabled,
@@ -972,6 +905,12 @@ export function renderContentApp(
         50% {
           opacity: 1;
           transform: scale(1);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .snapinsight-loading-dot {
+          animation: none;
         }
       }
     </style>

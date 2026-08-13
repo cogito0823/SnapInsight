@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SnapInsight 隐私政策</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; }
+      main { max-width: 760px; margin: 64px auto; padding: 0 24px 72px; line-height: 1.75; }
+      h1, h2 { line-height: 1.25; }
+      h2 { margin-top: 32px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>SnapInsight 隐私政策</h1>
+      <p>更新日期：2026-08-13</p>
+
+      <h2>数据处理</h2>
+      <p>SnapInsight 只处理用户主动选中的网页文字。扩展不会收集相邻段落、页面标题、浏览历史、账户信息或表单内容。</p>
+      <p>选中文字由当前网页中的 SnapInsight Content Script 直接传递给 Chrome Prompt API，并由 Chrome 管理的设备端模型生成解释。SnapInsight 不运营接收这些文字的后端服务，也不把这些文字发送给第三方模型 API。</p>
+
+      <h2>数据保存与共享</h2>
+      <ul>
+        <li>不保存选中文字或生成结果。</li>
+        <li>不出售、共享或将用户数据用于广告分析。</li>
+        <li>不使用遥测、分析 SDK 或远程代码。</li>
+        <li>Chrome 为准备设备端模型而进行的下载由 Chrome 自身负责，并受 Chrome 相关条款约束。</li>
+      </ul>
+
+      <h2>权限用途</h2>
+      <p>Content Script 的 <code>&lt;all_urls&gt;</code> 匹配用于在普通网页中读取用户明确创建的文字选区并显示解释卡片。扩展不申请 <code>host_permissions</code>，也不向网站或外部服务器发起内容请求。</p>
+      <p>扩展不申请 <code>offscreen</code> 或其他推理权限；Prompt API 会话只存在于当前 Content Script 页面实例中。</p>
+
+      <h2>用户控制</h2>
+      <p>用户可以关闭解释卡片以取消活动生成，也可以在 Chrome 扩展管理页禁用或卸载 SnapInsight。卸载后不会留下 SnapInsight 账户或云端数据。</p>
+    </main>
+  </body>
+</html>

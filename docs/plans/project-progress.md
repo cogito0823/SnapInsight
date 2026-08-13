@@ -125,7 +125,7 @@ This document should be updated as implementation progresses. It complements `do
 
 ## 4. In Progress
 
-- In progress: no active implementation batch; the post-`Batch 8` card reading-experience polish pass has completed and the baseline is stable again
+- In progress: no active implementation batch; the baseline now includes a macOS-only local companion-app MVP with development-mode runtime control and an initial verified `.app` packaging path
 
 ## 5. Next Up
 
@@ -136,7 +136,7 @@ This document should be updated as implementation progresses. It complements `do
 
 ### First Coding Targets
 
-- Current target: none; the current baseline includes the post-`Batch 8` card reading-experience polish on top of the completed release-ready build
+- Current target: none; the current baseline now includes the companion-app MVP scaffold, runtime checks, and a verified macOS packaging path
 - Active focus: preserve the documented worker-only localhost boundary and hybrid trust contract in future changes
 
 ## 6. Current Batch Tracking
@@ -349,3 +349,11 @@ Avoid vague entries such as:
 - Recorded a follow-up content-card readability fix: the card body now scrolls within a viewport-bounded shell for long detailed explanations, the response renderer now converts common markdown blocks and inline styles into formatted HTML, and focused rendering coverage was added before rebuilding the extension bundle.
 - Recorded a focused reading-experience polish pass on the in-page card: the card width was increased moderately for better Chinese line length, the top bar was simplified by removing the product-name title, short and detailed sections now use distinct label styling and softer reading surfaces, and focused rendering tests plus a rebuild confirmed the updated presentation layer.
 - Recorded a follow-up interaction polish pass on the in-page card: short and detailed explanation areas now expose icon-only regenerate actions, short regenerate resets the stale detail area before restarting, and stream-time rendering now preserves the card shell while updating only the body content so scrolling remains usable during long detailed output.
+- Recorded the start of a local productization track built around a macOS-only companion-app MVP, including discovery questions, a draft architecture RFC, a dedicated companion implementation design document, and active companion scaffolding that keeps the current `server/` package and local Ollama dependency in place.
+- Added a runnable `companion/` workspace with configuration loading, menu-bar app entrypoints, managed local-API subprocess control, local health and Ollama status checks, and log or config access helpers; development-mode verification confirmed both passive status inspection and a full start-to-healthy-to-stop loop against the existing `server/` implementation.
+- Added the first macOS packaging path for the companion MVP: packaged resource resolution now supports an embedded `server/app`, the managed local API can be launched through a dedicated companion executable mode, `py2app` build wiring plus a staging script were added, and the README now documents how to produce `companion/dist/SnapInsight.app`.
+- Verified the packaging baseline with real bundle execution: the generated `SnapInsight.app` contains the staged `server/app` resources, the bundled Python runtime can execute `snapinsight_companion`, and the packaged local API mode successfully served `GET /health` and `GET /v1/models` on an alternate port.
+- Verified end-to-end browser integration against the packaged local API on the standard `11435` port: a Playwright Chromium session loaded the unpacked extension from `extension/dist`, confirmed the stable extension id `ogainmanhpcodfdgafgpokdoejjlpjah`, seeded a valid selected model in extension storage, and observed both short and detailed explanation content render through the in-page card while the packaged API logs showed successful `POST /v1/explanations/stream` requests.
+- Fixed the packaged companion app's double-click startup path: the py2app bundle now declares `PyRuntimeLocations`, the app entrypoint preserves command-line arguments, the packaged subprocess launcher resolves the real `Contents/MacOS/SnapInsight` binary instead of the resource script path, and clean `open SnapInsight.app` verification confirmed a background `--run-local-api` child now binds to `127.0.0.1:11435`.
+- Added companion menu-bar polish and startup controls: the menu bar now presents the same `SI` label as the extension trigger, companion settings now persist `auto_start_service` and `launch_at_login`, and a packaged macOS run can register or remove a LaunchAgent-backed login item through the menu.
+- Corrected the Launch at Login toggle so enabling it no longer bootstraps a second menu-bar instance in the current session; the toggle now only persists the next-login LaunchAgent registration while keeping the current GUI process count stable.

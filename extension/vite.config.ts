@@ -7,8 +7,8 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        options: resolve(__dirname, "options.html"),
-        worker: resolve(__dirname, "src/worker/index.ts")
+        options: resolve(import.meta.dirname, "options.html"),
+        worker: resolve(import.meta.dirname, "src/worker/index.ts")
       },
       output: {
         entryFileNames: (chunkInfo) => {

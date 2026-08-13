@@ -1,13 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "SnapInsight",
-  "version": "0.1.0",
-  "description": "Local AI explanations for selected text.",
-  "permissions": ["storage"],
-  "host_permissions": ["http://127.0.0.1:11435/*"],
+  "name": "SnapInsight — On-device AI Explanations",
+  "short_name": "SnapInsight",
+  "version": "0.2.5",
+  "description": "Instantly explain selected text with Chrome's on-device AI. Selected text stays on your device.",
+  "minimum_chrome_version": "138",
   "background": {
     "service_worker": "worker.js",
     "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
   "content_scripts": [
     {
@@ -16,8 +22,15 @@
       "run_at": "document_idle"
     }
   ],
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "action": {
-    "default_title": "SnapInsight"
+    "default_title": "Open SnapInsight device status",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
   }
 }

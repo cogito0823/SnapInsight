@@ -1,9 +1,12 @@
 export const EXTENSION_ERROR_CODES = [
   "service_unavailable",
-  "local_service_conflict",
+  "prompt_api_unavailable",
+  "model_download_required",
+  "model_downloading",
+  "device_unsupported",
+  "language_unsupported",
+  "quota_exceeded",
   "invalid_request",
-  "no_models_available",
-  "selected_model_unavailable",
   "request_failed",
   "request_cancelled"
 ] as const;
