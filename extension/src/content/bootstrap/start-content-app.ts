@@ -566,6 +566,7 @@ export function startContentApp(): void {
   document.addEventListener("keyup", applySelection);
   document.addEventListener("mousedown", handleClickAway, true);
   document.addEventListener("keydown", handleKeydown);
+  window.addEventListener("resize", render);
   bindPageInstanceNavigation(() => {
     clearPendingSelection();
     cancelActiveRequests(state);

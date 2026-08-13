@@ -3,10 +3,9 @@ import type { AnchorRect } from "../anchor/normalize-rect";
 import type { ExtensionError } from "../../shared/errors/error-codes";
 import { renderMarkdownToHtml } from "./markdown";
 import { getUiLanguage, t } from "../../shared/i18n";
+import { cardLayoutToStyle, computeCardLayout } from "./card-layout";
 
 const TRIGGER_SIZE = 28;
-const CARD_WIDTH = 456;
-const CARD_GAP = 10;
 
 export interface RenderCallbacks {
   onTriggerHover: () => void;
@@ -64,18 +63,12 @@ function computeTriggerStyle(anchorRect: AnchorRect): string {
 }
 
 function computeCardStyle(anchorRect: AnchorRect): string {
-  const top = clamp(
-    anchorRect.top + anchorRect.height + CARD_GAP,
-    8,
-    Math.max(8, window.innerHeight - 180)
+  return cardLayoutToStyle(
+    computeCardLayout(anchorRect, {
+      width: window.innerWidth,
+      height: window.innerHeight
+    })
   );
-  const left = clamp(
-    anchorRect.left,
-    8,
-    Math.max(8, window.innerWidth - CARD_WIDTH - 8)
-  );
-
-  return `top:${top}px;left:${left}px;width:${CARD_WIDTH}px;`;
 }
 
 function bindPressAction(
