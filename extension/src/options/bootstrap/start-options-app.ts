@@ -8,30 +8,33 @@ import {
   createInitialOptionsState,
   type OptionsState
 } from "../state/options-state";
+import { getUiLanguage, t } from "../../shared/i18n";
 
 const OPTIONS_ROOT_ID = "app";
 
 function preparationErrorMessage(error: unknown): string {
   if (!(error instanceof PromptPreparationError)) {
-    return "模型准备过程意外中断，请重新检查后再试。";
+    return t("preparationInterrupted");
   }
 
   switch (error.reason) {
     case "api_missing":
-      return "当前 Chrome 未提供 Prompt API，请更新浏览器后重试。";
+      return t("preparationApiMissing");
     case "device_unsupported":
-      return "当前设备不符合 Chrome 设备端模型的运行要求。";
+      return t("preparationDeviceUnsupported");
     case "language_unsupported":
-      return "Chrome 设备端模型拒绝了当前语言配置。";
+      return t("preparationLanguageUnsupported");
     case "quota_exceeded":
-      return "设备端模型容量暂时不足，请关闭其他 AI 会话后重试。";
+      return t("preparationQuotaExceeded");
     case "download_failed":
     default:
-      return "模型下载或初始化失败，请检查网络、磁盘空间后重试。";
+      return t("preparationDownloadFailed");
   }
 }
 
 export function startOptionsApp(): void {
+  document.documentElement.lang = getUiLanguage();
+  document.title = t("optionsTitle");
   const root = document.getElementById(OPTIONS_ROOT_ID) ?? document.body;
   let state = createInitialOptionsState();
 
@@ -49,7 +52,7 @@ export function startOptionsApp(): void {
       setState({
         phase: "error",
         progress: null,
-        errorMessage: "无法读取 Chrome 设备端模型状态，请重新打开此页面。"
+        errorMessage: t("readinessReadFailed")
       });
     }
   };
