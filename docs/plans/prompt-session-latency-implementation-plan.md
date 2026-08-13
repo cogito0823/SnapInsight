@@ -48,7 +48,7 @@ changing SnapInsight's privacy or Service Worker boundaries.
   timeout performance outcomes.
 - [x] Offer an explicit cancel action after 8 seconds without visible output.
 - [x] Extract and test cancellable warm-up debounce.
-- [x] Update architecture, compatibility, localization, and Unreleased notes.
+- [x] Update architecture, compatibility, localization, and release-note inputs.
 
 ## Automated Verification
 
@@ -57,7 +57,7 @@ Executed from a clean dependency install on 2026-08-13:
 ```text
 npm ci          passed
 npm run check   passed
-npm test        70 passed, 0 failed
+npm test        72 passed, 0 failed
 npm run build   passed
 ```
 
@@ -105,8 +105,8 @@ dist/content.js         51.09 kB (gzip 14.74 kB)
   collection was added.
 - Product and package versions remain `0.2.7`; daily feature work does not
   consume the next release version.
-- User-visible release notes were added to `CHANGELOG.md` under `Unreleased`;
-  no legacy release-candidate file was created.
+- Release Please will derive the user-visible version entry from Conventional
+  Commits; no legacy release-candidate file was created.
 
 ## Real Chrome Release Gate
 
@@ -133,14 +133,14 @@ accepted architecture.
 
 ## Development and Release Flow
 
-The implementation is on `codex/prompt-session-latency`, created from the latest
-`main`. The remaining repository workflow is:
+The implementation is merged into `main`. The remaining repository workflow is:
 
-1. open a feature Pull Request;
-2. require PR CI and review;
-3. merge into `main` and require `main` CI;
-4. prepare the next product version only in a separate `release/<version>` PR;
-5. create an immutable `v<version>` tag only after the target `main` CI passes.
+1. allow Release Please to create or update the automated Release PR from the
+   merged Conventional Commit;
+2. complete the real-Chrome gate and require Release PR CI and review;
+3. merge the Release PR when the candidate is ready;
+4. let the release workflow create the immutable `v<version>` tag, verified
+   archive, checksum, and GitHub Release automatically.
 
 ## Change Record
 

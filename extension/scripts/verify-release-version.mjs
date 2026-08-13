@@ -30,6 +30,30 @@ if (workspaceVersion !== expectedVersion) {
   );
 }
 
+const releasePleaseManifest = JSON.parse(
+  await readFile("../.release-please-manifest.json", "utf8")
+);
+if (releasePleaseManifest["."] !== expectedVersion) {
+  mismatches.push(
+    `.release-please-manifest.json: expected ${expectedVersion}, found ${releasePleaseManifest["."]}`
+  );
+}
+
+const simpleVersion = (await readFile("../version.txt", "utf8")).trim();
+if (simpleVersion !== expectedVersion) {
+  mismatches.push(
+    `version.txt: expected ${expectedVersion}, found ${simpleVersion}`
+  );
+}
+
+const storeListing = await readFile("../docs/product/store-listing.md", "utf8");
+const storeVersion = /^- 版本：(\d+\.\d+\.\d+)/m.exec(storeListing)?.[1];
+if (storeVersion !== expectedVersion) {
+  mismatches.push(
+    `docs/product/store-listing.md: expected ${expectedVersion}, found ${storeVersion ?? "missing"}`
+  );
+}
+
 if (mismatches.length > 0) {
   console.error(`Release version mismatch:\n${mismatches.join("\n")}`);
   process.exit(1);
