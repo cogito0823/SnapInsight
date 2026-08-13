@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish extension
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Verify release version
+        working-directory: extension
+        env:
+          TAG_VERSION: ${{ github.ref_name }}
+        run: node scripts/verify-release-version.mjs "${TAG_VERSION#v}"
+
+      - name: Install dependencies
+        working-directory: extension
+        run: npm ci
+
+      - name: Check types
+        working-directory: extension
+        run: npm run check
+
+      - name: Run tests
+        working-directory: extension
+        run: npm test
+
+      - name: Build extension
+        working-directory: extension
+        run: npm run build
+
+      - name: Package extension
+        env:
+          ARCHIVE_NAME: snapinsight-${{ github.ref_name }}.zip
+        run: |
+          mkdir -p release
+          cd extension/dist
+          zip -qr "../../release/${ARCHIVE_NAME/v/}" .
+          cd ../..
+          shasum -a 256 "release/${ARCHIVE_NAME/v/}" > "release/${ARCHIVE_NAME/v/}.sha256"
+          unzip -p "release/${ARCHIVE_NAME/v/}" manifest.json | grep -F '"version"'
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapinsight-${{ github.ref_name }}
+          path: release/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Prepare release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            --method POST \
+            -f tag_name="${GITHUB_REF_NAME}" \
+            -f target_commitish="${GITHUB_SHA}" \
+            --jq .body > release-notes.md
+          {
+            echo
+            echo "## Verification"
+            echo
+            echo "- TypeScript type checking passed."
+            echo "- Automated tests passed."
+            echo "- Production build completed successfully."
+            echo
+            echo '```text'
+            cat "release/snapinsight-${GITHUB_REF_NAME#v}.zip.sha256"
+            echo '```'
+          } >> release-notes.md
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE_PATH: release/snapinsight-${{ github.ref_name }}.zip
+        run: |
+          ARCHIVE_PATH="${ARCHIVE_PATH/v/}"
+          CHECKSUM_PATH="${ARCHIVE_PATH}.sha256"
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" \
+              "${ARCHIVE_PATH}" "${CHECKSUM_PATH}" --clobber
+            gh release edit "${GITHUB_REF_NAME}" \
+              --title "SnapInsight ${GITHUB_REF_NAME#v}" \
+              --notes-file release-notes.md
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              "${ARCHIVE_PATH}" "${CHECKSUM_PATH}" \
+              --verify-tag \
+              --title "SnapInsight ${GITHUB_REF_NAME#v}" \
+              --notes-file release-notes.md
+          fi
