@@ -1,6 +1,7 @@
 export interface MockChromeEnvironment {
   storageState: Record<string, unknown>;
   sentMessages: unknown[];
+  createdTabs: chrome.tabs.CreateProperties[];
   tabMessages: Array<{
     tabId: number;
     message: unknown;
@@ -30,6 +31,7 @@ export function installMockChrome(options?: {
     ...(options?.initialStorage ?? {})
   };
   const sentMessages: unknown[] = [];
+  const createdTabs: chrome.tabs.CreateProperties[] = [];
   const tabMessages: Array<{
     tabId: number;
     message: unknown;
@@ -162,6 +164,23 @@ export function installMockChrome(options?: {
       }
     },
     tabs: {
+      create: async (createProperties: chrome.tabs.CreateProperties) => {
+        createdTabs.push(createProperties);
+        return {
+          active: createProperties.active ?? true,
+          id: createdTabs.length,
+          index: 0,
+          pinned: false,
+          highlighted: true,
+          incognito: false,
+          selected: true,
+          discarded: false,
+          autoDiscardable: true,
+          groupId: -1,
+          windowId: 1,
+          url: createProperties.url
+        } as chrome.tabs.Tab;
+      },
       sendMessage: (
         tabId: number,
         message: unknown,
@@ -205,6 +224,7 @@ export function installMockChrome(options?: {
   return {
     storageState,
     sentMessages,
+    createdTabs,
     tabMessages,
     emitRuntimeMessage: async (
       message: unknown,

@@ -28,9 +28,21 @@ export interface LanguageModelSession {
   destroy(): void;
 }
 
+export interface LanguageModelExpected {
+  type: "text" | "image" | "audio";
+  languages?: string[];
+}
+
+export interface LanguageModelCreateCoreOptions {
+  expectedInputs?: LanguageModelExpected[];
+  expectedOutputs?: LanguageModelExpected[];
+}
+
 export interface LanguageModelApi {
-  availability(): Promise<LanguageModelAvailability>;
-  create(options?: {
+  availability(
+    options?: LanguageModelCreateCoreOptions
+  ): Promise<LanguageModelAvailability>;
+  create(options?: LanguageModelCreateCoreOptions & {
     signal?: AbortSignal;
     initialPrompts?: Array<{
       role: "system" | "user" | "assistant";

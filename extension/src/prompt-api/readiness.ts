@@ -1,7 +1,13 @@
 import {
   getLanguageModelApi,
+  type LanguageModelCreateCoreOptions,
   type LanguageModelAvailability
 } from "./language-model";
+
+const MODEL_PREPARATION_CAPABILITIES: LanguageModelCreateCoreOptions = {
+  expectedInputs: [{ type: "text", languages: ["en"] }],
+  expectedOutputs: [{ type: "text", languages: ["en"] }]
+};
 
 export type PromptReadinessState =
   | "ready"
@@ -12,6 +18,11 @@ export type PromptReadinessState =
 export interface PromptReadiness {
   state: PromptReadinessState;
   availability: LanguageModelAvailability | "missing";
+}
+
+export interface PromptPreparationProgress {
+  percentage: number | null;
+  stage: "downloading" | "installing";
 }
 
 export class PromptPreparationError extends Error {
@@ -34,7 +45,9 @@ export async function readPromptReadiness(): Promise<PromptReadiness> {
     return { state: "unsupported", availability: "missing" };
   }
 
-  const availability = await languageModel.availability();
+  const availability = await languageModel.availability(
+    MODEL_PREPARATION_CAPABILITIES
+  );
   switch (availability) {
     case "available":
       return { state: "ready", availability };
@@ -63,31 +76,38 @@ function mapPreparationError(error: unknown): PromptPreparationError {
 
 export async function preparePromptModel(options?: {
   signal?: AbortSignal;
-  onProgress?: (progress: number) => void;
+  onProgress?: (progress: PromptPreparationProgress) => void;
 }): Promise<void> {
   const languageModel = getLanguageModelApi();
   if (!languageModel) {
     throw new PromptPreparationError("api_missing");
   }
 
-  const availability = await languageModel.availability();
+  const availability = await languageModel.availability(
+    MODEL_PREPARATION_CAPABILITIES
+  );
   if (availability === "unavailable") {
     throw new PromptPreparationError("device_unsupported");
   }
 
   try {
     const session = await languageModel.create({
+      ...MODEL_PREPARATION_CAPABILITIES,
       signal: options?.signal,
       monitor(monitor) {
         monitor.addEventListener("downloadprogress", (event) => {
-          options?.onProgress?.(
-            Math.min(100, Math.max(0, Math.round(event.loaded * 100)))
-          );
+          const progress = Math.min(1, Math.max(0, event.loaded));
+          options?.onProgress?.({
+            percentage:
+              progress > 0 && progress < 1
+                ? Math.min(99, Math.max(1, Math.round(progress * 100)))
+                : null,
+            stage: progress === 1 ? "installing" : "downloading"
+          });
         });
       }
     });
     session.destroy();
-    options?.onProgress?.(100);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw error;

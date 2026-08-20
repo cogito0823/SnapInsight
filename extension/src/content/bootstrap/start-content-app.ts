@@ -14,6 +14,7 @@ import {
 } from "../prompt-api/prompt-client";
 import { createPromptWarmupScheduler } from "../prompt-api/prompt-warmup";
 import type { ExplanationEventMessage } from "../../shared/contracts/events";
+import { OPEN_DEVICE_STATUS_MESSAGE_TYPE } from "../../shared/contracts/open-device-status";
 import { isPromptKeeperEvictMessage } from "../../shared/contracts/prompt-keeper";
 import { createExtensionError } from "../../shared/errors/error-codes";
 import { readSelection } from "../selection/read-selection";
@@ -62,6 +63,16 @@ async function copyText(text: string): Promise<void> {
     textarea.select();
     document.execCommand("copy");
     textarea.remove();
+  }
+}
+
+async function openDeviceStatusPage(): Promise<void> {
+  try {
+    await chrome.runtime.sendMessage({
+      type: OPEN_DEVICE_STATUS_MESSAGE_TYPE
+    });
+  } catch {
+    await chrome.runtime.openOptionsPage();
   }
 }
 
@@ -217,7 +228,7 @@ export function startContentApp(): void {
           void copyText(state.detailRequestState.textBuffer);
         },
         onOpenSetup: () => {
-          void chrome.runtime.openOptionsPage();
+          void openDeviceStatusPage();
         }
       }
     );

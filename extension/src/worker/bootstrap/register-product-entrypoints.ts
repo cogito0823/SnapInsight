@@ -1,3 +1,4 @@
+import { isOpenDeviceStatusMessage } from "../../shared/contracts/open-device-status";
 import { isPromptKeeperLifecycleMessage } from "../../shared/contracts/prompt-keeper";
 import { createChromePromptKeeperCoordinator } from "../prompt-keeper/keeper-coordinator";
 import { PROMPT_KEEPER_REGISTRY_KEY } from "../prompt-keeper/keeper-coordinator";
@@ -24,6 +25,19 @@ export function registerProductEntrypoints(): void {
     void chrome.runtime.openOptionsPage();
   });
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (isOpenDeviceStatusMessage(message)) {
+      void chrome.tabs
+        .create({
+          active: true,
+          url: chrome.runtime.getURL("options.html")
+        })
+        .then(
+          () => sendResponse({ ok: true }),
+          () => sendResponse({ ok: false })
+        );
+      return true;
+    }
+
     if (!isPromptKeeperLifecycleMessage(message)) return;
     const tabId = sender.tab?.id;
     if (tabId === undefined) return;

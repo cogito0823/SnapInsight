@@ -5,6 +5,7 @@ function statusContent(state: OptionsState): {
   tone: "success" | "info" | "warning" | "error";
   title: string;
   message: string;
+  hint?: string;
 } {
   switch (state.phase) {
     case "ready":
@@ -26,13 +27,26 @@ function statusContent(state: OptionsState): {
         message: t("statusDownloadingMessage")
       };
     case "preparing":
+      if (state.progressStage === "installing") {
+        return {
+          tone: "info",
+          title: t("statusInstallingTitle"),
+          message: t("statusInstallingMessage")
+        };
+      }
       return {
         tone: "info",
         title: t("statusPreparingTitle"),
         message:
           state.progress === null
             ? t("statusPreparingConnecting")
-            : t("statusPreparingProgress", state.progress)
+            : state.progressScope === "remaining"
+              ? t("statusRemainingProgress", state.progress)
+              : t("statusPreparingProgress", state.progress),
+        hint:
+          state.progress !== null && state.progressScope === "remaining"
+            ? t("statusRemainingProgressHint")
+            : undefined
       };
     case "unsupported":
       return {
@@ -64,13 +78,31 @@ export function renderOptionsPage(state: OptionsState): string {
     warning: { background: "#fffbeb", border: "#fde68a", text: "#92400e" },
     error: { background: "#fef2f2", border: "#fecaca", text: "#991b1b" }
   }[status.tone];
-  const canPrepare =
+  const canStartOrMonitor =
     state.phase === "downloadable" ||
     state.phase === "downloading" ||
     state.phase === "error";
+  const preparingProgress =
+    state.phase === "preparing" || state.phase === "downloading"
+      ? state.progress === null
+        ? `<div role="progressbar" aria-label="${t("statusPreparingTitle")}" aria-valuetext="${t("progressUnknown")}" data-indeterminate="true" style="height:8px; border-radius:999px; background:rgba(37,99,235,.14); overflow:hidden; margin-top:14px;"><div style="height:100%; width:35%; background:#2563eb; border-radius:999px; animation:snapinsight-progress-indeterminate 1.2s ease-in-out infinite;"></div></div>`
+        : `<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${state.progress}" style="height:8px; border-radius:999px; background:rgba(37,99,235,.14); overflow:hidden; margin-top:14px;"><div style="height:100%; width:${state.progress}%; background:#2563eb; transition:width .2s;"></div></div>`
+      : "";
 
   return `
     <main lang="${getUiLanguage()}" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#0f172a; background:#f8fafc; min-height:100vh; padding:48px 20px; box-sizing:border-box;">
+      <style>
+        @keyframes snapinsight-progress-indeterminate {
+          from { transform: translateX(-110%); }
+          to { transform: translateX(310%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [data-indeterminate="true"] {
+            background:repeating-linear-gradient(135deg, rgba(37,99,235,.12) 0 8px, rgba(37,99,235,.28) 8px 16px) !important;
+          }
+          [data-indeterminate="true"] > div { display:none; }
+        }
+      </style>
       <section style="max-width:760px; margin:0 auto;">
         <header style="margin-bottom:28px;">
           <div style="display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:14px; background:#2563eb; color:white; font-weight:800; margin-bottom:16px;">SI</div>
@@ -80,21 +112,18 @@ export function renderOptionsPage(state: OptionsState): string {
 
         <section aria-live="polite" style="border:1px solid ${colors.border}; background:${colors.background}; color:${colors.text}; border-radius:16px; padding:20px; margin-bottom:20px;">
           <h2 style="margin:0 0 8px; font-size:18px;">${status.title}</h2>
+          ${state.phase === "preparing" || state.phase === "downloading" ? `<p id="model-elapsed-time" style="margin:0 0 18px; color:#64748b; font-size:13px; line-height:1.55;">${t("preparationElapsed", "00:00")}</p>` : ""}
           <p style="margin:0; line-height:1.65;">${status.message}</p>
-          ${
-            state.phase === "preparing" && state.progress !== null
-              ? `<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${state.progress}" style="height:8px; border-radius:999px; background:rgba(37,99,235,.14); overflow:hidden; margin-top:14px;"><div style="height:100%; width:${state.progress}%; background:#2563eb; transition:width .2s;"></div></div>`
-              : ""
-          }
+          ${preparingProgress}
+          ${status.hint ? `<p style="margin:8px 0 0; color:#64748b; font-size:13px; line-height:1.55;">${status.hint}</p>` : ""}
         </section>
 
         <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:28px;">
           ${
-            canPrepare
-              ? `<button id="prepare-model-button" type="button" style="border:0; border-radius:11px; padding:11px 18px; background:#2563eb; color:white; font-weight:650; cursor:pointer;">${t("prepareModel")}</button>`
+            canStartOrMonitor
+              ? `<button id="prepare-model-button" type="button" style="border:0; border-radius:11px; padding:11px 18px; background:#2563eb; color:white; font-weight:650; cursor:pointer;">${state.phase === "error" ? t("retrySetup") : state.phase === "downloading" ? t("showLiveProgress") : t("prepareModel")}</button>`
               : ""
           }
-          <button id="recheck-button" type="button" ${state.phase === "checking" || state.phase === "preparing" ? "disabled" : ""} style="border:1px solid #cbd5e1; border-radius:11px; padding:10px 18px; background:white; color:#0f172a; font-weight:600; cursor:pointer;">${t("recheck")}</button>
         </div>
 
         <section style="display:grid; gap:14px; background:white; border:1px solid #e2e8f0; border-radius:18px; padding:22px; box-shadow:0 12px 30px rgba(15,23,42,.05);">
