@@ -168,6 +168,47 @@ test("first-run model error links to the device status page", () => {
     );
     assert.match(root.innerHTML, /首次使用前需要先准备/);
     assert.match(root.innerHTML, /id="snapinsight-open-setup"/);
+    assert.doesNotMatch(root.innerHTML, /id="snapinsight-retry-short"/);
+  } finally {
+    restore();
+  }
+});
+
+test("model download in progress links to device status without retry actions", () => {
+  const root = createMockRoot();
+  const restore = installMockWindow();
+  try {
+    renderContentApp(
+      root,
+      {
+        ...createOpenState(),
+        detailExpanded: true,
+        shortRequestState: applyErrorToRequestState(
+          createStartingRequestState("short", "short-downloading"),
+          {
+            code: "model_downloading",
+            message: "model downloading",
+            retryable: true
+          }
+        ),
+        detailRequestState: applyErrorToRequestState(
+          createStartingRequestState("detailed", "detail-downloading"),
+          {
+            code: "model_downloading",
+            message: "model downloading",
+            retryable: true
+          }
+        )
+      },
+      { anchorRect: null },
+      requestView,
+      callbacks
+    );
+
+    assert.match(root.innerHTML, /Chrome 正在下载设备端模型/);
+    assert.match(root.innerHTML, /id="snapinsight-open-setup"/);
+    assert.doesNotMatch(root.innerHTML, /id="snapinsight-retry-short"/);
+    assert.doesNotMatch(root.innerHTML, /id="snapinsight-retry-detail"/);
   } finally {
     restore();
   }
