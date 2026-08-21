@@ -10,6 +10,13 @@ export type PromptPerformancePhase =
   | "visible_wait"
   | "complete";
 
+export type PromptIdleAgeBucket =
+  | "unknown"
+  | "under_1m"
+  | "1m_to_4m"
+  | "4m_to_10m"
+  | "over_10m";
+
 export interface PromptPerformanceEvent {
   phase: PromptPerformancePhase;
   durationMs: number;
@@ -17,6 +24,7 @@ export interface PromptPerformanceEvent {
   mode?: SelectionMode;
   prewarmed?: boolean;
   cacheHit?: boolean;
+  idleAgeBucket?: PromptIdleAgeBucket;
   outcome: "success" | "error" | "cancelled" | "timeout";
 }
 
@@ -32,7 +40,7 @@ const defaultSink: PromptPerformanceSink = (event) => {
   }
 
   // The payload deliberately contains no text, prompt, output, URL, or identity.
-  console.debug("[SnapInsight prompt performance]", event);
+  console.debug("[SnapInsight prompt performance]", JSON.stringify(event));
 };
 
 let sink: PromptPerformanceSink = defaultSink;

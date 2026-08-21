@@ -46,7 +46,11 @@ changing SnapInsight's privacy or Service Worker boundaries.
   seconds, with immediate invalidation after session failures.
 - [x] Record acquisition, prewarm hit, visible wait, error, cancellation, and
   timeout performance outcomes.
-- [x] Offer an explicit cancel action after 8 seconds without visible output.
+- [x] Offer an explicit cancel action after 5 seconds without visible output.
+- [x] Describe acquisition, response wait, and possible runtime wake-up from
+  observed request phases without changing model preparation semantics.
+- [x] Add a coarse, in-memory idle-age diagnostic bucket to JSON performance
+  logs without using it for UI or lifecycle decisions.
 - [x] Extract and test cancellable warm-up debounce.
 - [x] Update architecture, compatibility, localization, and release-note inputs.
 - [x] Retain used keepers for the surviving document lifetime, including while
@@ -55,12 +59,12 @@ changing SnapInsight's privacy or Service Worker boundaries.
 
 ## Automated Verification
 
-Executed from a clean dependency install on 2026-08-13:
+Executed from a clean dependency install on 2026-08-21:
 
 ```text
 npm ci          passed
 npm run check   passed
-npm test        78 passed, 0 failed
+npm test        89 passed, 0 failed
 npm run build   passed
 ```
 
@@ -91,9 +95,9 @@ Production build output:
 
 ```text
 dist/options.html        0.35 kB (gzip 0.22 kB)
-dist/worker.js           0.25 kB (gzip 0.17 kB)
-dist/assets/options.js  11.99 kB (gzip 4.66 kB)
-dist/content.js         51.09 kB (gzip 14.74 kB)
+dist/worker.js           3.50 kB (gzip 1.30 kB)
+dist/assets/options.js  15.92 kB (gzip 6.06 kB)
+dist/content.js         52.86 kB (gzip 15.47 kB)
 ```
 
 ## Document and Boundary Alignment Review
@@ -108,46 +112,49 @@ dist/content.js         51.09 kB (gzip 14.74 kB)
   uses a separately created request session.
 - No telemetry, persistence, URL collection, selected text, prompt, or output
   collection was added.
-- Product and package versions remain `0.2.7`; daily feature work does not
+- Product and package versions remain `0.3.2`; feature work does not manually
   consume the next release version.
 - Release Please will derive the user-visible version entry from Conventional
   Commits; no legacy release-candidate file was created.
 
 ## Real Chrome Release Gate
 
-The current connected Chrome did not have this worktree's freshly built
-`extension/dist` loaded, so it could not provide valid runtime latency evidence
-without changing the user's extension installation. No claim about improved
-real-device P50/P95 is made from mock tests.
+Completed on 2026-08-21 with this worktree's exact production build loaded as
+an unpacked extension:
 
-Before the release PR is approved, load the CI artifact or this exact build and
-record the following on at least one supported Chrome device:
+1. cold/reloaded first requests entered acquisition feedback at about 2.3
+   seconds, exposed cancellation at about 5.2 seconds, and produced first
+   visible output after about 20.7 seconds in one run and 28.8 seconds in an
+   earlier run;
+2. repeated same-page requests produced first output in about 0.13–0.29 seconds;
+3. short-to-detail generation completed normally, with detail first output at
+   about 0.54 seconds and the short explanation preserved;
+4. request replacement and explicit cancellation cleared stale UI without old
+   output leaking into the active request;
+5. concurrent requests in two pages remained isolated, and a keeper retained
+   by another page restored a background page after more than four minutes with
+   first output in about 0.29 seconds;
+6. model preparation remained separate from request loading feedback, with
+   `downloadable` and `downloading` mappings covered by automated tests;
+7. acquisition, first-token, and visible-wait JSON diagnostics contained only
+   privacy-safe timing metadata;
+8. no SnapInsight runtime console errors or quota/resource failures were
+   observed; unrelated extension errors were excluded.
 
-1. model-ready browser cold-start first explanation;
-2. same-page consecutive explanation warm path;
-3. short-to-detail transition;
-4. cancellation during session acquisition and streaming;
-5. page navigation, page hide, and multi-tab cleanup;
-6. model `downloadable` and `downloading` setup messaging;
-7. local measurements for availability, template creation, clone, and TTFT;
-8. console error count and any quota/resource failures.
-
-Real-device results should be attached to the feature PR or release verification
-record. Threshold tuning may follow those measurements without changing the
-accepted architecture.
+These runs validate phase behavior and lifecycle recovery, but the small sample
+does not support a statistical P50/P95 latency claim.
 
 ## Development and Release Flow
 
-The document-lifetime and global LRU follow-up is implemented on
-`codex/prompt-keeper-lifecycle`. The remaining repository workflow is:
+The feature and its real-Chrome gate are complete. The remaining repository
+workflow is:
 
-1. open the feature Pull Request and require CI plus review;
-2. complete the real-Chrome gate against its exact build;
-3. merge the feature PR into `main` with a `fix:` Conventional Commit;
-4. allow Release Please to update the automated Release PR;
-5. merge that Release PR when ready and let the workflow create the immutable
-   `v<version>` tag, verified
-   archive, checksum, and GitHub Release automatically.
+1. commit the reviewed changes with a `fix:` Conventional Commit;
+2. push `main` and require CI to pass;
+3. allow Release Please to update the automated patch Release PR from `0.3.2`;
+4. review and merge that Release PR when ready, letting the workflow create the
+   immutable `v<version>` tag, verified archive, checksum, and GitHub Release
+   automatically.
 
 ## Change Record
 
@@ -159,3 +166,6 @@ The document-lifetime and global LRU follow-up is implemented on
   the no-clone fallback path after real-use cold-start feedback.
 - 2026-08-13: Replaced the hidden timeout with document-lifetime retention and
   added a five-keeper, hidden-first LRU guard coordinated by the Service Worker.
+- 2026-08-21: Added phase-accurate progressive loading feedback, privacy-safe
+  idle-age diagnostics, earlier cancellation, and completed the automated and
+  real-Chrome release gates against the production build.
