@@ -38,6 +38,7 @@ afterEach(() => {
 test("content prompt client streams model events directly to the page", async () => {
   const originalLanguageModel = globalThis.LanguageModel;
   const events: ExplanationEventMessage[] = [];
+  const stages: string[] = [];
   let receivedPrompt = "";
   let destroyed = false;
   const session: LanguageModelSession = {
@@ -67,17 +68,59 @@ test("content prompt client streams model events directly to the page", async ()
       text: "Transformer",
       mode: "short",
       senderContext,
-      onEvent: (event) => events.push(event)
+      onEvent: (event) => events.push(event),
+      onStage: (stage) => stages.push(stage)
     });
     await flushTasks();
 
     assert.deepEqual(response, { ok: true, requestId: "prompt-1" });
     assert.match(receivedPrompt, /Transformer/);
     assert.equal(destroyed, true);
+    assert.deepEqual(stages, ["dispatching", "waiting_response"]);
     assert.deepEqual(
       events.map((message) => message.payload.event.event),
       ["start", "chunk", "chunk", "complete"]
     );
+  } finally {
+    globalThis.LanguageModel = originalLanguageModel;
+  }
+});
+
+test("content prompt client reports waiting only after generation is accepted", async () => {
+  const originalLanguageModel = globalThis.LanguageModel;
+  const events: ExplanationEventMessage[] = [];
+  const stages: string[] = [];
+  globalThis.LanguageModel = {
+    availability: async () => "available",
+    create: async () => ({
+      prompt: async () => "",
+      promptStreaming: () => {
+        throw new Error("generation rejected");
+      },
+      destroy: () => undefined
+    })
+  } satisfies LanguageModelApi;
+
+  try {
+    const response = await startPromptExplanation({
+      requestId: "prompt-rejected",
+      text: "Transformer",
+      mode: "short",
+      senderContext,
+      onEvent: (event) => events.push(event),
+      onStage: (stage) => stages.push(stage)
+    });
+    await flushTasks();
+
+    assert.equal(response.ok, true);
+    assert.deepEqual(stages, ["dispatching"]);
+    const errorEvent = events.find(
+      (event) => event.payload.event.event === "error"
+    );
+    assert.ok(errorEvent);
+    if (errorEvent.payload.event.event === "error") {
+      assert.equal(errorEvent.payload.event.error.code, "request_failed");
+    }
   } finally {
     globalThis.LanguageModel = originalLanguageModel;
   }
@@ -210,7 +253,7 @@ test("content prompt client reports a model startup timeout and slow-start stage
 
     assert.equal(response.ok, false);
     if (!response.ok) assert.equal(response.error.code, "model_startup_timeout");
-    assert.deepEqual(stages, ["generating", "starting_model"]);
+    assert.deepEqual(stages, ["dispatching", "acquiring_session"]);
   } finally {
     globalThis.LanguageModel = originalLanguageModel;
   }
@@ -219,6 +262,7 @@ test("content prompt client reports a model startup timeout and slow-start stage
 test("content prompt client aborts when the first token times out", async () => {
   const originalLanguageModel = globalThis.LanguageModel;
   const events: ExplanationEventMessage[] = [];
+  const stages: string[] = [];
   globalThis.LanguageModel = {
     availability: async () => "available",
     create: async () => ({
@@ -233,7 +277,7 @@ test("content prompt client aborts when the first token times out", async () => 
     })
   };
   setPromptClientTimeoutsForTesting({
-    firstTokenSoftMs: 2,
+    responseSlowSoftMs: 2,
     firstTokenHardMs: 8,
     streamStallMs: 50
   });
@@ -244,7 +288,8 @@ test("content prompt client aborts when the first token times out", async () => 
       text: "Transformer",
       mode: "short",
       senderContext,
-      onEvent: (event) => events.push(event)
+      onEvent: (event) => events.push(event),
+      onStage: (stage) => stages.push(stage)
     });
     assert.equal(response.ok, true);
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -256,6 +301,11 @@ test("content prompt client aborts when the first token times out", async () => 
     if (errorEvent.payload.event.event === "error") {
       assert.equal(errorEvent.payload.event.error.code, "first_token_timeout");
     }
+    assert.deepEqual(stages, [
+      "dispatching",
+      "waiting_response",
+      "response_slow"
+    ]);
   } finally {
     globalThis.LanguageModel = originalLanguageModel;
   }
@@ -391,9 +441,25 @@ test("performance events record prewarm hit, acquisition, and visible wait", asy
       (event) => event.phase === "visible_wait"
     );
     assert.equal(acquire?.prewarmed, true);
+    assert.equal(acquire?.idleAgeBucket, "unknown");
     assert.equal(visibleWait?.prewarmed, true);
     assert.equal(visibleWait?.outcome, "success");
     assert.ok((visibleWait?.durationMs ?? 0) >= 5);
+
+    performanceEvents.length = 0;
+    await startPromptExplanation({
+      requestId: "prompt-recent-idle-performance",
+      text: "Attention",
+      mode: "short",
+      senderContext,
+      onEvent: () => undefined
+    });
+    await flushTasks();
+
+    const recentAcquire = performanceEvents.find(
+      (event) => event.phase === "acquire"
+    );
+    assert.equal(recentAcquire?.idleAgeBucket, "under_1m");
   } finally {
     globalThis.LanguageModel = originalLanguageModel;
   }

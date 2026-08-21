@@ -40,7 +40,14 @@ const callbacks: RenderCallbacks = {
 };
 
 const anchorRect = { top: 10, left: 20, width: 30, height: 12 };
-const requestView = { shortDispatchPending: false, detailDispatchPending: false };
+const requestView = {
+  shortDispatchPending: false,
+  detailDispatchPending: false,
+  shortLoadingStage: "dispatching" as const,
+  detailLoadingStage: "dispatching" as const,
+  shortCancelAvailable: false,
+  detailCancelAvailable: false
+};
 
 function createOpenState() {
   return {
@@ -103,6 +110,10 @@ test("streaming responses expose copy, regenerate, and accessible dialog control
     assert.match(root.innerHTML, /id="snapinsight-regenerate-detail"/);
     assert.match(root.innerHTML, /<h1>文档<\/h1>/);
     assert.match(root.innerHTML, /<strong>结构化说明<\/strong>/);
+    assert.equal(
+      root.innerHTML.match(/解释正在持续生成/g)?.length,
+      2
+    );
   } finally {
     restore();
   }
@@ -174,14 +185,76 @@ test("long-running generation exposes an explicit cancel action", () => {
       },
       { anchorRect },
       {
+        ...requestView,
         shortDispatchPending: true,
-        detailDispatchPending: false,
         shortCancelAvailable: true
       },
       callbacks
     );
     assert.match(root.innerHTML, /snapinsight-cancel-short/);
     assert.match(root.innerHTML, /取消生成/);
+  } finally {
+    restoreWindow();
+  }
+});
+
+test("loading copy describes request phases without claiming model readiness", () => {
+  const restoreWindow = installMockWindow();
+  try {
+    const expected = [
+      ["dispatching", "正在开始解释"],
+      ["acquiring_session", "启动或恢复可能需要一些时间"],
+      ["waiting_response", "本地模型已接收请求"],
+      ["response_slow", "本地模型仍在生成"]
+    ] as const;
+
+    for (const [stage, copy] of expected) {
+      const root = createMockRoot();
+      renderContentApp(
+        root,
+        {
+          ...createOpenState(),
+          shortRequestState: createStartingRequestState("short", `short-${stage}`)
+        },
+        { anchorRect },
+        {
+          ...requestView,
+          shortDispatchPending: true,
+          shortLoadingStage: stage
+        },
+        callbacks
+      );
+      assert.match(root.innerHTML, new RegExp(copy));
+    }
+  } finally {
+    restoreWindow();
+  }
+});
+
+test("stream start without a first chunk shows only the current request phase", () => {
+  const root = createMockRoot();
+  const restoreWindow = installMockWindow();
+  try {
+    const request = applyForwardedStartEvent(
+      createStartingRequestState("short", "short-waiting"),
+      {
+        event: "start",
+        requestId: "short-waiting",
+        mode: "short",
+        model: "chrome-gemini-nano"
+      }
+    );
+
+    renderContentApp(
+      root,
+      { ...createOpenState(), shortRequestState: request },
+      { anchorRect },
+      { ...requestView, shortLoadingStage: "waiting_response" },
+      callbacks
+    );
+
+    assert.match(root.innerHTML, /本地模型已接收请求/);
+    assert.doesNotMatch(root.innerHTML, /解释正在持续生成/);
   } finally {
     restoreWindow();
   }

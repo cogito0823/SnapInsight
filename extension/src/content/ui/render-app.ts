@@ -28,19 +28,17 @@ export interface TriggerViewState {
 export interface RequestRenderViewState {
   shortDispatchPending: boolean;
   detailDispatchPending: boolean;
-  shortLoadingStage?: PromptLoadingStage;
-  detailLoadingStage?: PromptLoadingStage;
-  shortCancelAvailable?: boolean;
-  detailCancelAvailable?: boolean;
+  shortLoadingStage: PromptLoadingStage;
+  detailLoadingStage: PromptLoadingStage;
+  shortCancelAvailable: boolean;
+  detailCancelAvailable: boolean;
 }
 
-function loadingMessage(
-  stage: PromptLoadingStage | undefined,
-  mode: "short" | "detailed"
-): string {
-  if (stage === "starting_model") return t("modelStartingSlow");
-  if (stage === "waiting_first_token") return t("waitingFirstToken");
-  return mode === "short" ? t("shortGenerating") : t("detailGenerating");
+function loadingMessage(stage: PromptLoadingStage): string {
+  if (stage === "dispatching") return t("explanationDispatching");
+  if (stage === "acquiring_session") return t("modelRuntimePreparing");
+  if (stage === "waiting_response") return t("modelGenerating");
+  return t("modelResponseSlow");
 }
 
 function escapeHtml(value: string): string {
@@ -295,7 +293,7 @@ function renderShortSection(
 
   if (viewState.shortDispatchPending || request.phase === "starting") {
     return `${renderLoadingState(
-      loadingMessage(viewState.shortLoadingStage, "short")
+      loadingMessage(viewState.shortLoadingStage)
     )}${
       viewState.shortCancelAvailable
         ? renderCancelButton("snapinsight-cancel-short")
@@ -319,7 +317,7 @@ function renderShortSection(
         )}
         ${renderResponseContent(
           request.textBuffer,
-          loadingMessage(viewState.shortLoadingStage, "short")
+          loadingMessage(viewState.shortLoadingStage)
         )}
         ${
           viewState.shortCancelAvailable
@@ -327,8 +325,8 @@ function renderShortSection(
             : ""
         }
         ${
-          request.phase === "streaming"
-            ? `<div class="snapinsight-footnote">${t("contentStreaming")}</div>`
+          request.phase === "streaming" && request.textBuffer.trim().length > 0
+            ? `<div class="snapinsight-footnote">${t("explanationStreaming")}</div>`
             : ""
         }
       </div>
@@ -386,7 +384,7 @@ function renderDetailSection(
       <div class="snapinsight-detail-section">
         ${renderSectionHeader(t("detailLabel"), "detail")}
         ${renderLoadingState(
-          loadingMessage(viewState.detailLoadingStage, "detailed")
+          loadingMessage(viewState.detailLoadingStage)
         )}
         ${
           viewState.detailCancelAvailable
@@ -413,7 +411,7 @@ function renderDetailSection(
         )}
         ${renderResponseContent(
           request.textBuffer,
-          loadingMessage(viewState.detailLoadingStage, "detailed")
+          loadingMessage(viewState.detailLoadingStage)
         )}
         ${
           viewState.detailCancelAvailable
@@ -421,8 +419,8 @@ function renderDetailSection(
             : ""
         }
         ${
-          request.phase === "streaming"
-            ? `<div class="snapinsight-footnote">${t("detailStreaming")}</div>`
+          request.phase === "streaming" && request.textBuffer.trim().length > 0
+            ? `<div class="snapinsight-footnote">${t("explanationStreaming")}</div>`
             : ""
         }
       </div>

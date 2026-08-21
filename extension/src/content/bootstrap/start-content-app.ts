@@ -89,8 +89,8 @@ function createInitialViewState(): ContentViewState {
   return {
     shortDispatchPending: false,
     detailDispatchPending: false,
-    shortLoadingStage: "generating",
-    detailLoadingStage: "generating",
+    shortLoadingStage: "dispatching",
+    detailLoadingStage: "dispatching",
     shortCancelAvailable: false,
     detailCancelAvailable: false
   };
@@ -182,10 +182,7 @@ export function startContentApp(): void {
       {
         anchorRect: pendingSelection?.anchorRect ?? null
       },
-      {
-        shortDispatchPending: viewState.shortDispatchPending,
-        detailDispatchPending: viewState.detailDispatchPending
-      },
+      viewState,
       {
         onTriggerHover: () => {
           cancelScheduledWarmup();
@@ -417,7 +414,7 @@ export function startContentApp(): void {
     replaceViewState({
       ...viewState,
       shortDispatchPending: true,
-      shortLoadingStage: "generating",
+      shortLoadingStage: "dispatching",
       shortCancelAvailable: false
     });
     render();
@@ -534,7 +531,7 @@ export function startContentApp(): void {
     replaceViewState({
       ...viewState,
       detailDispatchPending: true,
-      detailLoadingStage: "generating",
+      detailLoadingStage: "dispatching",
       detailCancelAvailable: false
     });
     setState({

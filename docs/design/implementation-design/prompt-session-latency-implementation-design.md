@@ -130,10 +130,10 @@ Initial defaults:
 | --- | ---: | ---: |
 | Availability | none | 5 seconds |
 | Template/request acquisition | 2 seconds | 30 seconds |
-| First token | 5 seconds | 30 seconds |
+| First token | 2 seconds | 30 seconds |
 | Stream inactivity | none | 30 seconds |
 
-After 8 seconds without visible output, the card exposes an explicit cancel
+After 5 seconds without visible output, the card exposes an explicit cancel
 action. Closing the card remains an immediate cancellation path at all times.
 
 The acquisition hard timeout covers readiness and template/request-session
@@ -150,13 +150,24 @@ The existing public request state remains compatible. Ephemeral view state adds
 a loading detail per short and detailed request:
 
 ```ts
-type PromptLoadingDetail = "generating" | "starting_model" | "waiting_first_token";
+type PromptLoadingDetail =
+  | "dispatching"
+  | "acquiring_session"
+  | "waiting_response"
+  | "response_slow";
 ```
 
-- immediate request: `generating`;
-- acquisition soft threshold: `starting_model`;
-- session acquired and prompt dispatched: `waiting_first_token`;
+- immediate request: `dispatching`;
+- acquisition soft threshold: `acquiring_session`; copy explains that starting
+  or resuming the local model may take time because that work can occur inside
+  create/clone;
+- session acquired and prompt dispatched: `waiting_response`;
+- no first chunk two seconds after dispatch: `response_slow`;
 - first chunk: existing streaming UI.
+
+These states describe observed request phases only. They do not replace or infer
+the existing Prompt API preparation state. The copy says that starting or
+resuming may take time because Chrome exposes no separate loaded-state signal.
 
 No new persistent selection or model data is introduced.
 
@@ -173,13 +184,20 @@ interface PromptPerformanceEvent {
   mode?: "short" | "detailed";
   prewarmed?: boolean;
   cacheHit?: boolean;
+  idleAgeBucket?: "unknown" | "under_1m" | "1m_to_4m" |
+    "4m_to_10m" | "over_10m";
   outcome: "success" | "error" | "cancelled" | "timeout";
 }
 ```
 
-The default sink logs only when a local debug flag is enabled. No event includes
+The default sink logs one JSON payload per event only when a local debug flag is
+enabled. No event includes
 text, output, prompt, URL, tab identity, or page identity. Events are not sent
 over the network or written to extension storage.
+
+`idleAgeBucket` is a request-start diagnostic based on the previous successful
+first chunk in the same document. It is coarse, in-memory only, and never drives
+loading copy, timeout behavior, session acquisition, or model preparation.
 
 `visible_wait` measures user dispatch to first visible chunk, while `acquire`
 measures session acquisition. Error, cancellation, and timeout paths emit
@@ -247,8 +265,10 @@ npm test
 npm run build
 ```
 
-Real Chrome validation remains required for final latency claims because mocks
-cannot reproduce Chrome's model-runtime cold start, memory pressure, or quota.
+Real Chrome behavioral validation was completed on 2026-08-21 against the exact
+production build. Statistical latency claims still require a larger sample
+because mocks cannot reproduce Chrome's model-runtime cold start, memory
+pressure, or quota.
 
 ## Alignment Review
 
@@ -269,5 +289,8 @@ cannot reproduce Chrome's model-runtime cold start, memory pressure, or quota.
   lifetime, use a 5-minute hidden grace period, and preserve the keeper on the
   no-clone fallback path.
 - 2026-08-13: Replaced hidden timeout disposal with document-lifetime retention
-  and added a five-keeper, hidden-first extension LRU guard backed by
+  and added a five-keeper, hidden-first extension LRU guard coordinated through
   `chrome.storage.session`.
+- 2026-08-21: Validated cold, warm, detailed, cancellation, multi-page, and
+  background-recovery behavior in real Chrome and clarified the progressive
+  loading stages using only observable Prompt API phases.

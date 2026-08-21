@@ -23,12 +23,16 @@ import {
   PromptSessionPoolError,
   type AcquiredPromptSession
 } from "./prompt-session-pool";
-import { emitPromptPerformance } from "./prompt-performance";
+import {
+  emitPromptPerformance,
+  type PromptIdleAgeBucket
+} from "./prompt-performance";
 
 export type PromptLoadingStage =
-  | "generating"
-  | "starting_model"
-  | "waiting_first_token";
+  | "dispatching"
+  | "acquiring_session"
+  | "waiting_response"
+  | "response_slow";
 
 interface ActivePromptRequest {
   controller: AbortController;
@@ -40,6 +44,7 @@ interface ActivePromptRequest {
   visibleWaitEmitted: boolean;
   hasReceivedChunk: boolean;
   prewarmed: boolean;
+  idleAgeBucket: PromptIdleAgeBucket;
   longWaitTimer: ReturnType<typeof setTimeout> | null;
   longWaitOffered: boolean;
   onLongWait?: (visible: boolean) => void;
@@ -54,7 +59,7 @@ export type PromptStartResult =
 interface PromptClientTimeouts {
   acquisitionSoftMs: number;
   acquisitionHardMs: number;
-  firstTokenSoftMs: number;
+  responseSlowSoftMs: number;
   firstTokenHardMs: number;
   streamStallMs: number;
   cancelOfferMs: number;
@@ -63,16 +68,26 @@ interface PromptClientTimeouts {
 const DEFAULT_TIMEOUTS: PromptClientTimeouts = {
   acquisitionSoftMs: 2_000,
   acquisitionHardMs: 30_000,
-  firstTokenSoftMs: 5_000,
+  responseSlowSoftMs: 2_000,
   firstTokenHardMs: 30_000,
   streamStallMs: 30_000,
-  cancelOfferMs: 8_000
+  cancelOfferMs: 5_000
 };
 
 let timeouts = { ...DEFAULT_TIMEOUTS };
 const activeRequests = new Map<string, ActivePromptRequest>();
 let keeperPageInstanceId: string | null = null;
 let pageHidden = typeof document !== "undefined" && document.visibilityState !== "visible";
+let lastSuccessfulFirstTokenAt: number | null = null;
+
+function idleAgeBucket(now = Date.now()): PromptIdleAgeBucket {
+  if (lastSuccessfulFirstTokenAt === null) return "unknown";
+  const idleMs = Math.max(0, now - lastSuccessfulFirstTokenAt);
+  if (idleMs < 60_000) return "under_1m";
+  if (idleMs < 4 * 60_000) return "1m_to_4m";
+  if (idleMs < 10 * 60_000) return "4m_to_10m";
+  return "over_10m";
+}
 
 function reportKeeperLifecycle(
   action: PromptKeeperLifecycleAction,
@@ -127,6 +142,7 @@ function emitVisibleWaitOutcome(
     path: request.acquired?.path,
     mode: request.mode,
     prewarmed: request.prewarmed,
+    idleAgeBucket: request.idleAgeBucket,
     outcome
   });
 }
@@ -145,6 +161,7 @@ function emitGenerationTerminal(
     path: request.acquired?.path,
     mode: request.mode,
     prewarmed: request.prewarmed,
+    idleAgeBucket: request.idleAgeBucket,
     outcome
   });
 }
@@ -249,8 +266,8 @@ async function generate(options: {
     );
 
     firstTokenSoftTimer = setTimeout(
-      () => options.onStage?.("waiting_first_token"),
-      timeouts.firstTokenSoftMs
+      () => options.onStage?.("response_slow"),
+      timeouts.responseSlowSoftMs
     );
     firstTokenHardTimer = setTimeout(() => {
       request.timeoutKind = "first_token_timeout";
@@ -261,6 +278,7 @@ async function generate(options: {
       buildExplanationPrompt(options.text, options.mode),
       { signal: request.controller.signal }
     );
+    options.onStage?.("waiting_response");
     const reader = stream.getReader();
     const cancelReader = (): void => {
       void reader.cancel().catch(() => undefined);
@@ -276,6 +294,7 @@ async function generate(options: {
         if (!firstChunkReceived) {
           firstChunkReceived = true;
           request.hasReceivedChunk = true;
+          lastSuccessfulFirstTokenAt = Date.now();
           clearLongWaitOffer(request);
           clearTimer(firstTokenSoftTimer);
           clearTimer(firstTokenHardTimer);
@@ -285,6 +304,7 @@ async function generate(options: {
             path: request.acquired.path,
             mode: options.mode,
             prewarmed: request.prewarmed,
+            idleAgeBucket: request.idleAgeBucket,
             outcome: "success"
           });
           emitVisibleWaitOutcome(request, "success");
@@ -311,6 +331,7 @@ async function generate(options: {
       path: request.acquired.path,
       mode: options.mode,
       prewarmed: request.prewarmed,
+      idleAgeBucket: request.idleAgeBucket,
       outcome: "success"
     });
     emitEvent(
@@ -328,6 +349,7 @@ async function generate(options: {
           path: request.acquired.path,
           mode: options.mode,
           prewarmed: request.prewarmed,
+          idleAgeBucket: request.idleAgeBucket,
           outcome: "timeout"
         });
       }
@@ -350,6 +372,7 @@ async function generate(options: {
           path: request.acquired.path,
           mode: options.mode,
           prewarmed: request.prewarmed,
+          idleAgeBucket: request.idleAgeBucket,
           outcome: "error"
         });
       }
@@ -409,12 +432,13 @@ export async function startPromptExplanation(options: {
     visibleWaitEmitted: false,
     hasReceivedChunk: false,
     prewarmed: false,
+    idleAgeBucket: idleAgeBucket(),
     longWaitTimer: null,
     longWaitOffered: false,
     onLongWait: options.onLongWait
   };
   activeRequests.set(requestId, request);
-  options.onStage?.("generating");
+  options.onStage?.("dispatching");
   request.longWaitTimer = setTimeout(() => {
     request.longWaitTimer = null;
     request.longWaitOffered = true;
@@ -424,7 +448,7 @@ export async function startPromptExplanation(options: {
   const acquisitionStartedAt = performance.now();
   let acquisitionTimedOut = false;
   const softTimer = setTimeout(
-    () => options.onStage?.("starting_model"),
+    () => options.onStage?.("acquiring_session"),
     timeouts.acquisitionSoftMs
   );
   const hardTimer = setTimeout(() => {
@@ -443,6 +467,7 @@ export async function startPromptExplanation(options: {
       path: request.acquired.path,
       mode: options.mode,
       prewarmed: request.prewarmed,
+      idleAgeBucket: request.idleAgeBucket,
       outcome: "success"
     });
   } catch (error) {
@@ -452,6 +477,7 @@ export async function startPromptExplanation(options: {
       phase: "acquire",
       durationMs: performance.now() - acquisitionStartedAt,
       mode: options.mode,
+      idleAgeBucket: request.idleAgeBucket,
       outcome: acquisitionTimedOut
         ? "timeout"
         : isDomError(error, "AbortError")
@@ -473,7 +499,7 @@ export async function startPromptExplanation(options: {
         ok: false,
         error: createExtensionError(
           "model_startup_timeout",
-          "Chrome's on-device model took too long to start.",
+          "Chrome took too long to connect to the on-device model.",
           true
         )
       };
@@ -494,7 +520,6 @@ export async function startPromptExplanation(options: {
     clearTimeout(hardTimer);
   }
 
-  options.onStage?.("waiting_first_token");
   setTimeout(() => void generate({ ...options, requestId, text }), 0);
   return { ok: true, requestId };
 }
@@ -527,6 +552,7 @@ export function disposePromptResources(): void {
   }
   pagePromptSessionPool.dispose();
   unregisterKeeper();
+  lastSuccessfulFirstTokenAt = null;
 }
 
 export function evictPromptKeeper(pageInstanceId: string): void {
