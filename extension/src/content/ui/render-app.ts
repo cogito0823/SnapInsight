@@ -262,7 +262,7 @@ function renderSetupButton(error: ExtensionError): string {
 }
 
 function renderRetryButton(error: ExtensionError): string {
-  if (!error.retryable) {
+  if (!error.retryable || needsSetup(error)) {
     return "";
   }
 
@@ -274,7 +274,7 @@ function renderRetryButton(error: ExtensionError): string {
 }
 
 function renderDetailRetryButton(error: ExtensionError): string {
-  if (!error.retryable) {
+  if (!error.retryable || needsSetup(error)) {
     return "";
   }
 
