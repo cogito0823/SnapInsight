@@ -3,7 +3,7 @@
 - Type: normative
 - Status: Accepted
 - Applicability: current
-- Approval: [Approval record](../plans/baseline-approvals.md#governance-migration)
+- Approval: [Approval and original migration scope](../plans/baseline-approvals.md#governance-rollout-exception)
 - Superseded-By: none
 
 - Date: 2026-11-17
@@ -178,7 +178,7 @@ SnapInsight 的具体 npm 命令、浏览器场景及 Python 环境约束写入 
 
 删除旧规则前扫描所有入站引用：当前指导改为新入口，历史依据改为不可变 commit/path，含本 RFC、审核记录和所有旧文档，不仅更新 README。旧文档的历史引用可以保留为明确的 Git 证据，不要求不存在的工作树链接仍能打开。
 
-在同一候选迁移分支上完成规则迁移、文档基线修复和检查，通过双工具新会话验收后才切换主线。默认移除全部重复 .mdc；若已支持的 Cursor 版本实测需要兼容入口，可启用固定模板 project-entry.mdc，只要求读取根 AGENTS.md，配置必须明确标记此模式。兼容入口不能添加另一份规则正文。
+在同一候选迁移分支上完成规则迁移、文档基线修复和检查，通过双工具新会话验收后才切换主线。[RFC-009](RFC-009-governance-rollout-before-cursor-acceptance.md) 记录了仅适用于 SnapInsight PR #12 的一次例外。默认移除全部重复 .mdc；若已支持的 Cursor 版本实测需要兼容入口，可启用固定模板 project-entry.mdc，只要求读取根 AGENTS.md，配置必须明确标记此模式。兼容入口不能添加另一份规则正文。
 
 ## 10. 实施、验收与风险
 
@@ -198,7 +198,7 @@ SnapInsight 的具体 npm 命令、浏览器场景及 Python 环境约束写入 
 | 问题 | 本轮设计修正 | 状态 |
 | --- | --- | --- |
 | G-01 批准范围失效 | §6 明确实质修订、原基线保留、范围证据；spec 限定状态组合 | 本地结构与语义复核通过 |
-| G-02 检查契约不确定 | spec 定义格式、文件集合、三种快照模式、解析边界、诊断与正反例 | 本地检查器验证通过，GitHub Actions 待运行 |
+| G-02 检查契约不确定 | spec 定义格式、文件集合、三种快照模式、解析边界、诊断与正反例 | 本地及候选、合并后 GitHub Actions 验证通过，见[合并验收记录](../plans/shared-agent-governance-design-review.md#post-merge-review) |
 | G-03 删除旧规则导致断链 | §9 固定 commit/path，扫描入站引用 | 本地验证通过 |
 | G-04 通用与项目规则混杂 | §3–5 分层及固定版本采用、升级、回滚 | 非 Chrome 样例通过，真实第二项目待定 |
 
@@ -206,6 +206,7 @@ SnapInsight 的具体 npm 命令、浏览器场景及 Python 环境约束写入 
 
 ## Change Record
 
+- 2026-11-17：记录 RFC-009 对 PR #12 主线切换顺序的一次例外。
 - 2026-11-17：初稿提出共享入口和检查，作者自审发现 G-01 至 G-04。
 - 2026-11-17：按用户要求完整重写，纳入跨项目采用、固定版本、升级与回滚，拆出检查契约和实施计划；保持 In Review。
 - 2026-11-17：项目负责人确认方案并授权迁移与多轮复核，状态更新为 Accepted。批准范围见页首记录。

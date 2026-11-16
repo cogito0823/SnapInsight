@@ -3,7 +3,7 @@
 - Type: normative
 - Status: Accepted
 - Applicability: current
-- Approval: [Approval record](../plans/baseline-approvals.md#session-lifecycle)
+- Approval: [Approval and original lifecycle evidence](../plans/baseline-approvals.md#prompt-performance-fields)
 - Superseded-By: none
 
 - Related Documents:
@@ -98,8 +98,8 @@ acquires an isolated request session:
    create an independent request session with the same system prompt for every
    explanation;
 3. destroy the request session after completion, cancellation, or failure;
-4. after the first real request, retain the template while its document remains
-   visible so Chrome can keep the model runtime ready;
+4. after the first real request, retain the template across visibility changes
+   under the lifecycle rules below so Chrome can keep the model runtime ready;
 5. destroy it on page lifecycle boundaries or invalid-session failures.
 
 Template creation is single-flight. A valid, visible selection may schedule a
@@ -107,10 +107,13 @@ debounced warm-up, but Content Script injection alone must never create a
 session. Warm-up must not trigger model download: `downloadable` and
 `downloading` states remain blocked and direct the user to device status.
 
-The implementation will expose privacy-safe local timing events for development
-diagnosis. Events contain phase, duration, path, and mode only. They must never
-contain selected text, generated content, prompts, page URL, or other browsing
-data, and they are not transmitted or persisted by default.
+For development diagnosis, timing events contain `phase`, `durationMs` and
+`outcome`. They may include `path`, `mode`, `prewarmed`, `cacheHit` and
+`idleAgeBucket` as defined in the session implementation design. The default sink
+logs to the local console only when the debug flag is enabled. Events must never
+include selected text, generated content, prompts, URLs, tab or page identities,
+or other browsing data. They are not transmitted or persisted by default.
+See the approved field decision in [RFC-010](RFC-010-prompt-performance-event-fields.md).
 
 ## Lifecycle Rules
 
@@ -168,6 +171,7 @@ architecture RFC.
 
 ## Change Record
 
+- 2026-11-17: Adopted the shipped diagnostic field list under RFC-010.
 - 2026-08-13: Accepted the page-scoped template-session and per-request clone
   architecture for the authorized latency-optimization implementation.
 - 2026-08-13: Revised keeper retention after real-device cold-start validation:

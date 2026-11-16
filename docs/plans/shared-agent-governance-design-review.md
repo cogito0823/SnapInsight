@@ -7,7 +7,7 @@
 - Superseded-By: none
 
 - Review date: 2026-11-17
-- Review result: Local migration, Codex rule loading, and GitHub Actions verified. Cursor behavioral acceptance and branch protection remain open.
+- Review result: Local migration, Codex rule loading, GitHub Actions and `main` branch protection verified. Cursor behavioral acceptance remains open.
 - Review type: Author self-review; not independent approval
 - Related Documents:
   - [RFC-008](../rfcs/RFC-008-shared-agent-project-governance.md)
@@ -225,3 +225,18 @@
 - [草稿 PR #12](https://github.com/cogito0823/SnapInsight/pull/12) 从 `codex/document-governance` 向 `main` 提交治理迁移。
 - GitHub Actions 对候选 `d3d689be9918da362d19413405db4e5d19e14145` 的 [CI 运行](https://github.com/cogito0823/SnapInsight/actions/runs/43947971819) 通过。Project governance 通过仓库治理检查及测试。Extension checks 通过依赖安装、类型检查、测试和构建，并上传扩展产物。
 - 分支保护和 Cursor 仍按实施计划跟踪。
+
+<a id="post-merge-review"></a>
+### 合并后验收补记 — 2026-11-17
+
+- [PR #12](https://github.com/cogito0823/SnapInsight/pull/12) 已合并。PR 末次提交为 `20b562f2712c56b57225304948d7dd59870d8315`，合并提交为 `58697de2141dbf8c6610750f8cb401d67e3b2706`。二者 tree 均为 `4b7fd88124c8065528a22213fb463a7dc8d9746f`。
+- 合并提交的 [CI 运行](https://github.com/cogito0823/SnapInsight/actions/runs/43948668627) 中 Project governance 与 Extension checks 均通过。[Release 运行](https://github.com/cogito0823/SnapInsight/actions/runs/43948668545) 的 Release Please 步骤因 `Bad credentials` 失败，打包发布 job 跳过。
+- GitHub 分支 API 返回 `protected: false`，生效分支规则 API 返回空数组。required checks 与评审保护仍未生效。
+- Cursor 按负责人要求继续暂缓。主线已经切换，双工具验收仍未完成。切换顺序与 RFC-008 §9 的差异及负责人批准的一次例外见 [RFC-009](../rfcs/RFC-009-governance-rollout-before-cursor-acceptance.md)。
+
+<a id="main-branch-protection"></a>
+### main 分支保护补记 — 2026-11-17
+
+- 按负责人要求在 GitHub 配置 `main` 分支保护。回读分支 API 得到 `protected: true`，`main` 仍为 `58697de2141dbf8c6610750f8cb401d67e3b2706`。
+- [规则设置](https://github.com/cogito0823/SnapInsight/settings/branches)要求通过 PR 合入，分支须与 `main` 同步，且 GitHub Actions 的 Project governance 与 Extension checks 均通过。合并前须解决评审对话。规则对管理员同样生效，禁止强推和删除 `main`。
+- 单人维护阶段的强制独立审批人数为零。已通过 GitHub API 核对生效设置。实际 PR 拦截场景留待下一次 PR 验证。

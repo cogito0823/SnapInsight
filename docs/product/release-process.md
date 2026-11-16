@@ -68,7 +68,7 @@ Release Please 工作流需要仓库管理员完成一次配置：
    - Issues: Read and write（用于 Release Please 标签）
 3. 将 token 保存为仓库 Actions Secret：`RELEASE_PLEASE_TOKEN`。
 4. 在仓库 Actions 设置中允许 GitHub Actions 创建 Pull Request。
-5. 为 `main` 保留 CI 必须通过和 PR 审核规则。
+5. 为 `main` 配置 CI 必须通过和 PR 审核规则。实际生效状态见[治理验收记录](../plans/shared-agent-governance-design-review.md#post-merge-review)。
 
 不能仅依赖默认 `GITHUB_TOKEN`：由它创建的 Release PR 通常不会再次触发 PR
 CI。使用独立 token 可以确保自动 Release PR 走与普通 PR 相同的检查。
@@ -164,6 +164,7 @@ GitHub Release 自动化不等于 Chrome Web Store 已发布；商店上传与�
 
 - Release Please 没有创建 PR：确认 `main` 中存在 `feat:`、`fix:` 或其他可
   发布提交，并检查 `RELEASE_PLEASE_TOKEN` 与 Actions PR 权限。
+- Release Please 报 `Bad credentials`：由仓库管理员检查 `RELEASE_PLEASE_TOKEN` 对应凭据是否有效，再重新运行失败的 Release 工作流。此错误在 [PR #12 合并后的 Release 运行](https://github.com/cogito0823/SnapInsight/actions/runs/43948668545) 出现，打包发布 job 未执行。最新正式版本和商店待办见[发布清单](chrome-web-store-checklist.md)。
 - Release PR 没有触发 CI：确认工作流使用的是 `RELEASE_PLEASE_TOKEN`，而
   不是默认 `GITHUB_TOKEN`。
 - Release PR 合并后打包失败：Release 保持草稿状态；修复工作流后重新运行失败

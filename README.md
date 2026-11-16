@@ -47,9 +47,9 @@ Then load the extension:
 2. Enable **Developer mode**.
 3. Click **Load unpacked**.
 4. Select `extension/dist`.
-5. On the device status page, click **Prepare local model**.
+5. If the model is ready to download, click **Prepare local model** on the device status page. If it is already downloading, the page updates automatically and offers **Show live progress**.
 
-After Chrome finishes preparing the model, open an ordinary webpage, select 1–20 Chinese characters or English words, and hover over the `SI` trigger.
+After Chrome finishes preparing the model, open an ordinary webpage, select text within the 1–20 unit limit (for example, Chinese characters or English words), and hover over the `SI` trigger.
 
 ## Development
 
@@ -66,8 +66,7 @@ Use `npm run dev` for watch builds. After rebuilding, reload the extension from 
 For local latency diagnosis, select the extension's Content Script context in
 Chrome DevTools and set
 `globalThis.__snapinsightPromptPerformanceDebug__ = true`. Console events report
-only phase, duration, warm/fallback path, cache/prewarm status, mode, and outcome;
-they never include selected text, prompts, output, page URLs, or page identity.
+phase, duration, cold/warm/fallback path, cache/prewarm status, mode, an optional coarse idle-age bucket, and outcome. They never include selected text, prompts, output, page URLs, or page identity.
 
 Local and CI validation builds keep the current Manifest version and are
 identified by their Git commit SHA. Release Please automatically maintains a
@@ -96,7 +95,7 @@ Inference runs directly in the Content Script's isolated world. A valid selectio
 
 ## Privacy and permissions
 
-SnapInsight processes only the text explicitly selected by the user and its screen coordinates. It does not read surrounding paragraphs, page titles, form data, or browsing history. Selected text and generated responses are not persisted. The `storage` permission keeps only session-scoped keeper LRU metadata; it contains no URL, title, selected text, prompt, or generated content.
+SnapInsight processes explicitly selected text and its position, including selections in supported text fields. It does not collect unselected form contents, surrounding paragraphs, page titles, or browsing history. The `storage` permission supports two local uses. The worker keeps keeper LRU metadata in `chrome.storage.session`. The device status page stores the model preparation start time in `chrome.storage.local` to restore elapsed time when reopened. Extension storage contains no URL, title, selected text, prompt, or generated result.
 
 The Manifest uses `content_scripts.matches: ["<all_urls>"]` so the `SI` trigger can appear after a selection without requiring a toolbar click first. This access is used only for selection detection and rendering the in-page interface. The extension does not request `tabs`, `history`, `webRequest`, or `offscreen` permissions.
 

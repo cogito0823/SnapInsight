@@ -22,6 +22,8 @@ Content Script runs inference in the isolated world. Chrome owns the model downl
 
 Selection snapshots and generated output live in the document. The worker receives lifecycle and routing metadata. The session registry stores tab ID, frame ID, page instance, hidden state and last use time. Text, prompt, result, URL and title stay out of the registry. Local timing diagnostics use coarse timing and phase attributes.
 
+The device status page owns the model preparation timer. It uses `chrome.storage.local` to restore elapsed time when the page reopens. The [state and storage contract](../specs/extension-state-spec.md) describes when the timestamp is written and cleared.
+
 `extension/public/manifest.json` defines the Chrome MV3 entry points, `storage` permission and top-level content injection. Build `extension/dist/` with both Vite targets. Only the extension build output belongs in the release ZIP.
 
 ## Related references

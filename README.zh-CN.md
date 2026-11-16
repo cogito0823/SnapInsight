@@ -47,9 +47,9 @@ npm run build
 2. 启用“开发者模式”。
 3. 点击“加载已解压的扩展程序”。
 4. 选择 `extension/dist`。
-5. 在设备状态页点击“准备本地模型”。
+5. 如果模型可下载，在设备状态页点击“准备本地模型”。如果模型已在下载，页面会自动更新，也可点击“展示实时进度”。
 
-Chrome 完成模型准备后，打开普通网页，选中 1–20 个中文字符或英文单词，将鼠标悬停在 `SI` 入口即可使用。
+Chrome 完成模型准备后，打开普通网页，选中 1–20 个有效单位（例如中文字符或英文单词），将鼠标悬停在 `SI` 入口即可使用。
 
 ## 开发
 
@@ -65,7 +65,7 @@ npm run build
 
 如需在本地诊断延迟，请在 Chrome DevTools 中选择扩展的 Content Script
 上下文，并设置 `globalThis.__snapinsightPromptPerformanceDebug__ = true`。
-控制台事件仅包含阶段、耗时、热路径或降级路径、缓存/预热状态、模式和结果，
+控制台事件包含阶段、耗时、冷启动/热路径/降级路径、缓存和预热状态、模式、可选的空闲时间区间和结果，
 不会包含选中文字、prompt、输出、页面 URL 或页面身份。
 
 本地和 CI 验证构建保持当前 Manifest 版本不变，通过 Git commit SHA 区分。
@@ -94,7 +94,7 @@ Manifest V3 Service Worker
 
 ## 隐私与权限
 
-SnapInsight 只处理用户明确选中的文字及其屏幕坐标，不读取相邻段落、页面标题、表单内容或浏览历史，也不会持久化选中文字和生成结果。`storage` 权限仅保存当前浏览器会话内的 keeper LRU 元数据，不包含 URL、标题、选中文字、prompt 或生成内容。
+SnapInsight 处理用户明确选中的文字及其位置，包括受支持文本框中选中的片段。扩展不收集未选中的表单内容、相邻段落、页面标题或浏览历史。`storage` 权限用于两处本机存储。Worker 用 `chrome.storage.session` 保存 keeper LRU 元数据。设备状态页用 `chrome.storage.local` 保存模型准备开始时间，重新打开后可继续显示已用时。两处存储都不包含 URL、标题、选中文字、prompt 或生成结果。
 
 Manifest 使用 `content_scripts.matches: ["<all_urls>"]`，让用户选词后无需先点击工具栏按钮即可看到 `SI` 入口。该访问范围仅用于检测选区和渲染页面内界面。扩展不申请 `tabs`、`history`、`webRequest` 或 `offscreen` 权限。
 
