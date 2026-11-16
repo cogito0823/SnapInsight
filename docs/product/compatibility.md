@@ -1,6 +1,6 @@
 # Prompt API 兼容性基线
 
-核对日期：2026-08-13
+文档核对日期：2026-11-17。真实 Chrome 验证见[历史验证记录](../plans/prompt-session-latency-implementation-plan.md)与[商店发布清单](chrome-web-store-checklist.md)。
 
 ## 浏览器与系统
 
@@ -18,11 +18,11 @@
 
 ## 语言策略
 
-Chrome 当前正式列出的 Prompt API 文本语言是英语、日语、西班牙语、德语和法语。SnapInsight 的中文能力来自真实 Chrome 验证，但尚未属于 Chrome 的正式语言保证。因此会：
+SnapInsight 曾在真实 Chrome 中验证中文生成。实际可用性取决于 Chrome 版本、设备和模型。设备状态页用英语文本输入和输出能力检查并准备模型。页内解释的提示词要求按 Chrome 界面语言输出，并采用以下策略：
 
-- 不传入会使中文被立即拒绝的 `expectedInputs` / `expectedOutputs` 声明
+- 解释会话创建不声明 `expectedInputs` / `expectedOutputs`
 - 捕获 `NotSupportedError` 并显示“语言暂不支持”
-- 在产品和商店说明中明确中文属于实验性能力
+- 在产品和商店说明中说明中文生成的实际可用性由 Chrome 决定
 
 ## 扩展执行上下文
 
@@ -39,7 +39,7 @@ keeper；若所有 keeper 都可见，则释放最久未使用者。被释放页
 
 不支持 `clone()` 时，keeper 不承载任何用户请求；每次解释都另行创建并销毁独立请求会话。这样会多占用一个空会话，但同时保持模型就绪和请求上下文隔离。每个标签页文档拥有自己的 keeper，底层模型运行时仍由 Chrome 管理，Session 不能放入 Service Worker 或跨刷新复用。
 
-Chrome 重启或模型运行时空闲卸载后，第一次解释可能包含从磁盘加载模型的冷启动耗时，但这不等于重新下载。只有 `LanguageModel.availability()` 返回 `downloadable` 或 `downloading` 时，产品才将其视为下载阶段。
+Chrome 重启或模型运行时空闲卸载后，第一次解释可能包含从磁盘加载模型的冷启动耗时。产品用 `LanguageModel.availability()` 的 `downloadable` 和 `downloading` 区分下载相关状态。模型需要设置时，解释卡片引导用户打开设备状态页。设备状态页可显示下载、安装和已用时，见[设备状态契约](../specs/extension-state-spec.md)。
 
 ## 官方参考
 

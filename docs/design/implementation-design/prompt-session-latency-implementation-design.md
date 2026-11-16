@@ -279,8 +279,10 @@ pressure, or quota.
 
 - The Prompt API remains in the Content Script document context.
 - The Service Worker coordinates keeper metadata and targeted eviction but does
-  not proxy prompts or own Prompt API sessions. The Manifest adds `storage` for
-  session-scoped LRU state only.
+  not proxy prompts or own Prompt API sessions. The session latency work uses
+  `storage` for session-scoped LRU state. The device status page uses the same
+  permission for its separate preparation timer, described in the [state and
+  storage contract](../../specs/extension-state-spec.md).
 - Model preparation remains an explicit device-status-page action.
 - Request histories remain isolated through clone or independent-create paths.
 - Performance diagnosis preserves the documented no-telemetry privacy boundary.

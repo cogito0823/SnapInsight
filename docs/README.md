@@ -12,6 +12,8 @@
 - [PRD: SnapInsight](prd/PRD-snapinsight.md)
 - [RFC-007: Prompt Session Lifecycle and Latency](rfcs/RFC-007-prompt-session-lifecycle-and-latency.md)
 - [RFC-008: Shared Agent Project Governance](rfcs/RFC-008-shared-agent-project-governance.md)
+- [RFC-009: Governance rollout before Cursor acceptance](rfcs/RFC-009-governance-rollout-before-cursor-acceptance.md)
+- [RFC-010: Prompt performance event fields](rfcs/RFC-010-prompt-performance-event-fields.md)
 - [SnapInsight extension state and contracts](specs/extension-state-spec.md)
 - [Project Governance Specification](specs/project-governance-spec.md)
 <!-- governance:current:end -->
@@ -56,5 +58,6 @@
 - [探索记录](discovery/)记录范围澄清和技术验证。
 - [首版需求与范围问答](discovery/requirements-scope-questions.md)保留项目启动时的讨论记录。当前产品要求见上方 PRD。
 - [开发与发布流程](product/release-process.md)和[商店发布清单](product/chrome-web-store-checklist.md)指导发布。
-- [兼容性](product/compatibility.md)、[隐私政策](product/privacy-policy.md)及[商店文案](product/store-listing.md)描述产品发布信息。
+- [兼容性](product/compatibility.md)、[隐私政策](product/privacy-policy.md)（[HTML 版](product/privacy-policy.html)）及[商店文案](product/store-listing.md)描述产品发布信息。
+- [Changelog](../CHANGELOG.md)记录版本变更。最新 GitHub Release 与商店状态分别见[商店发布清单](product/chrome-web-store-checklist.md)。
 - [产品资料](product/)和[文档资源](assets/)包括版本历史、说明及图片。

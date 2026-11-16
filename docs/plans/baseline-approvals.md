@@ -26,3 +26,17 @@
 
 - Source: the Accepted change record in `2674a9b630dca079b07dab266451ae7d3afd97f7:docs/rfcs/RFC-007-prompt-session-lifecycle-and-latency.md` and the Approved design at that revision.
 - Scope: page-scoped keeper, isolated request sessions, bounded coordination, cancellation and timing. The existing RFC records authorized implementation on 2026-08-13. The original approval message and identity are unverified. The 2026-11-17 owner authorization covers preserving this shipped baseline in the document migration.
+
+<a id="governance-rollout-exception"></a>
+## PR #12 rollout exception
+
+- Confirmed by the project owner on 2026-11-17 in this project chat. The owner approved both presented proposals with “提案通过”.
+- Scope: accept the main-branch rollout before Cursor acceptance for PR #12 only. Cursor acceptance remains deferred. The original approval for the rest of RFC-008 is recorded under [Governance migration](#governance-migration).
+- Revision: RFC-009 as presented, SHA-256 `a0abab5a0242a6b511ebec28f714e27530382d50eeeb1d5de396290901d49757`.
+
+<a id="prompt-performance-fields"></a>
+## Prompt performance event fields
+
+- Confirmed by the project owner on 2026-11-17 in this project chat. The owner approved both presented proposals with “提案通过”.
+- Scope: align RFC-007 with the shipped diagnostic fields and retain the local console and privacy constraints. The original lifecycle approval evidence is recorded under [Session lifecycle evidence](#session-lifecycle).
+- Revision: RFC-010 as presented, SHA-256 `c86abe339de5948ec1457081848d8049e18273926bfdea4de197414dfea1234f`.

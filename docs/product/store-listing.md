@@ -3,8 +3,8 @@
 ## 基本信息
 
 - 名称：SnapInsight — On-device AI Explanations
-- 分类：生产力工具
-- 语言：中文（简体）
+- 公开页分类：工具（Tools）
+- 扩展语言：英语、中文（简体）。下文为简体中文商店文案
 - 版本：0.3.4 <!-- x-release-please-version -->
 
 ## 简短描述
@@ -26,7 +26,7 @@ SnapInsight 是一个轻量的网页阅读助手。阅读网页时选中不理�
 隐私设计：
 
 - 只处理用户主动选中的文字
-- 不读取相邻段落、页面标题、浏览历史或表单内容
+- 可处理受支持文本框中明确选中的片段，不收集未选中的表单内容、相邻段落、页面标题或浏览历史
 - 不保存选中文字和生成结果
 - 不使用遥测、广告 SDK 或远程代码
 - 不把选中文字发送给 SnapInsight 或第三方模型服务器
@@ -35,8 +35,8 @@ SnapInsight 是一个轻量的网页阅读助手。阅读网页时选中不理�
 
 - Chrome 138 或更高版本
 - 设备必须满足 Chrome 设备端模型的硬件和存储要求
-- 首次使用需要在扩展的设备状态页点击“准备本地模型”
-- 中文生成能力取决于 Chrome 当前设备端模型实现，尚不属于 Chrome 的正式语言保证
+- 模型尚未下载时，在设备状态页点击“准备本地模型”。下载中可查看实时进度
+- 中文生成曾通过实机验证，实际可用性取决于 Chrome 版本、设备和模型
 
 ## 单一用途声明
 
@@ -50,10 +50,10 @@ SnapInsight 的唯一用途是在普通网页中读取用户明确选中的少�
 
 ### `storage`
 
-仅使用 `chrome.storage.session` 保存最多 5 个页面 keeper 的 LRU 协调元数据，
-使 Manifest V3 Service Worker 休眠恢复后仍能限制空闲会话数量。数据仅包含
-tab/frame 运行时编号、随机页面实例编号、可见性和最近使用顺序，不包含 URL、
-标题、选中文字、prompt 或生成内容，并随浏览器会话结束而清除。
+- `chrome.storage.session` 保存最多 5 个页面 keeper 的 LRU 协调元数据，使 Worker 休眠恢复后仍可协调已登记的会话。数据包含 tab/frame 运行时编号、随机页面实例编号、可见性和最近使用时间，随浏览器会话结束而清除。
+- 设备状态页在 `chrome.storage.local` 保存模型准备开始时间，用于重新打开页面后继续显示已用时。进入下载或准备状态且没有有效旧值时写入。状态页转为就绪、可下载、不支持或错误时将值设为 `null`。关闭页面或重启浏览器不会自动清除此值。
+
+两处存储均不包含 URL、标题、选中文字、prompt 或生成结果。
 
 ### 远程代码
 
@@ -63,7 +63,7 @@ tab/frame 运行时编号、随机页面实例编号、可见性和最近使用�
 
 - 网站内容：勾选“是”，仅限用户主动选中的文字；即使只在本机处理，Chrome Web Store 也要求披露
 - 数据用途：扩展核心功能
-- 处理方式：只在当前设备的扩展上下文中临时处理，不保存、不上传、不传输给开发者或第三方
+- 处理方式：网站内容仅在当前设备临时处理，不保存、不上传、不传输给开发者或第三方。扩展另在本机保存上述计时和会话协调元数据
 - 身份验证信息：否
 - 个人身份信息：否
 - 健康、财务、位置、通信内容：否
@@ -72,6 +72,7 @@ tab/frame 运行时编号、随机页面实例编号、可见性和最近使用�
 
 ## 链接
 
+- [Chrome Web Store 公开页](https://chromewebstore.google.com/detail/dkeelcflcgogpnopobhenccemofbhbli)
 - 支持页面：https://github.com/cogito0823/SnapInsight/issues
 - 项目主页：https://github.com/cogito0823/SnapInsight
 - 隐私政策：https://github.com/cogito0823/SnapInsight/blob/main/docs/product/privacy-policy.md
