@@ -110,6 +110,8 @@ release/     本地发布产物（不纳入 Git）
 
 ## 参与贡献
 
+仓库规则和现行实施依据见[项目协作指南](docs/contributing.md)和[文档索引](docs/README.md)。
+
 欢迎提交 Issue 和 Pull Request。提交修改前，请确保：
 
 1. 保持扩展用途单一，并遵守设备端隐私边界。

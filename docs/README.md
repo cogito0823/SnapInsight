@@ -1,144 +1,60 @@
-# Documentation Structure
+# SnapInsight 文档索引
 
-This directory stores project documents for `SnapInsight`.
+从[项目协作指南](contributing.md)进入。通用[文档规范](governance/documentation.md)和[工作流程](governance/workflow.md)适用于 Codex 和 Cursor。
 
-The documentation is organized by purpose so that exploratory discussions, decision records, and implementation guidance do not get mixed together.
+## 现行实施依据
 
-## Directory Layout
+<!-- governance:current:start -->
+- [SnapInsight extension architecture](design/extension-architecture.md)
+- [Prompt Session Latency Implementation Design](design/implementation-design/prompt-session-latency-implementation-design.md)
+- [SnapInsight implementation plan](plans/implementation-plan.md)
+- [Shared Agent Governance Implementation Plan](plans/shared-agent-governance-implementation-plan.md)
+- [PRD: SnapInsight](prd/PRD-snapinsight.md)
+- [RFC-007: Prompt Session Lifecycle and Latency](rfcs/RFC-007-prompt-session-lifecycle-and-latency.md)
+- [RFC-008: Shared Agent Project Governance](rfcs/RFC-008-shared-agent-project-governance.md)
+- [SnapInsight extension state and contracts](specs/extension-state-spec.md)
+- [Project Governance Specification](specs/project-governance-spec.md)
+<!-- governance:current:end -->
 
-```text
-docs/
-  README.md
-  discovery/
-  rfcs/
-  prd/
-  design/
-  specs/
-  plans/
-```
+## 待审提案
 
-## Directory Responsibilities
+<!-- governance:proposed:start -->
+<!-- governance:proposed:end -->
 
-### `discovery/`
+## 当前工作记录
 
-Used for exploratory discussion materials.
+<!-- governance:records:start -->
+- [Approval and baseline evidence](plans/baseline-approvals.md)
+- [SnapInsight implementation checklist](plans/implementation-checklist.md)
+- [SnapInsight project progress](plans/project-progress.md)
+- [Shared Agent Governance Design Review](plans/shared-agent-governance-design-review.md)
+<!-- governance:records:end -->
 
-Typical contents:
-- requirement clarification questions
-- open issues
-- background notes
-- scope drafts
-- rough discussion records
+## 历史实现与验证
 
-Rules:
-- content here may be incomplete, tentative, or even conflicting
-- `discovery` documents are not final implementation references
-- once a topic requires explicit option comparison or a decision, it should be promoted into `rfcs/`
-- discovery documents should be split by major topic
+<!-- governance:historical:start -->
+- [SnapInsight Extension and Local Service Design](design/extension-and-local-service-design.md)
+- [Companion App MVP Implementation Design](design/implementation-design/companion-app-mvp-implementation-design.md)
+- [SnapInsight Content Script Interaction Implementation Design](design/implementation-design/content-script-interaction-implementation-design.md)
+- [SnapInsight Options Page and Settings Surface Implementation Design](design/implementation-design/options-page-and-settings-surface-implementation-design.md)
+- [SnapInsight Server Streaming and Orchestration Implementation Design](design/implementation-design/server-streaming-and-orchestration-implementation-design.md)
+- [SnapInsight Worker, Settings, and Local API Implementation Design](design/implementation-design/worker-settings-and-local-api-implementation-design.md)
+- [SnapInsight Repository and Code Structure Design](design/repository-and-code-structure.md)
+- [SnapInsight Implementation Design Formal Review](plans/implementation-design-formal-review.md)
+- [Prompt Session Latency Implementation Plan](plans/prompt-session-latency-implementation-plan.md)
+- [RFC-001: Extension Architecture](rfcs/RFC-001-extension-architecture.md)
+- [RFC-002: Local Communication and Security](rfcs/RFC-002-local-communication-and-security.md)
+- [RFC-003: Python Service and Ollama Integration](rfcs/RFC-003-python-service-and-ollama-integration.md)
+- [RFC-004: In-Page Interaction Lifecycle](rfcs/RFC-004-in-page-interaction-lifecycle.md)
+- [RFC-005: Authoritative Startup and Contract Semantics](rfcs/RFC-005-authoritative-startup-and-contract-semantics.md)
+- [RFC-006: Local Companion App Architecture](rfcs/RFC-006-local-companion-app-architecture.md)
+- [SnapInsight API Specification](specs/api-spec.md)
+<!-- governance:historical:end -->
 
-### `rfcs/`
+## 探索、发布与资源
 
-Used for proposal and decision documents.
-
-Typical contents:
-- architecture options
-- technical tradeoff analysis
-- integration strategy comparisons
-- formal recommendations and final decisions
-
-Rules:
-- each RFC should focus on one decision topic
-- RFCs should compare options, tradeoffs, risks, and recommendation
-- RFCs should include a status such as `Draft`, `In Review`, `Accepted`, `Rejected`, or `Superseded`
-- accepted RFCs serve as formal decision references
-
-### `prd/`
-
-Used for formal product requirements documents.
-
-Typical contents:
-- finalized product goals
-- scope and non-goals
-- user flows
-- acceptance-oriented functional requirements
-
-Rules:
-- PRD documents should reflect agreed requirements
-- PRD should not be used to host unresolved technical option debates
-
-### `design/`
-
-Used for implementation design documents.
-
-Typical contents:
-- extension interaction design
-- Python service design
-- module-level technical design
-
-Rules:
-- documents here describe how an accepted direction will be implemented
-- design documents should follow accepted RFCs and the PRD
-
-### `specs/`
-
-Used for specification documents.
-
-Typical contents:
-- API fields
-- request and response payloads
-- schemas
-- validation rules
-- data contracts
-
-Rules:
-- interface fields and protocol details should live here instead of being mixed into broader design documents
-- spec documents should follow accepted PRD, RFC, and design decisions
-- the default API specification file for this project can be `docs/specs/api-spec.md`
-
-### `plans/`
-
-Used for execution planning documents.
-
-Typical contents:
-- implementation plans
-- milestone breakdowns
-- risk assessment
-- rollout and testing plans
-
-Rules:
-- planning documents should assume major product and technical decisions are already made
-
-## Collaboration Rules
-
-The team will use document-first discussion.
-
-Rules:
-- discussions with the assistant should happen through referenced files such as `@docs/discovery/requirements-scope-questions.md`
-- exploratory conversations and requirement clarification go into `discovery/`
-- option comparison and decision-making go into `rfcs/`
-- final implementation guidance belongs in `prd/`, `design/`, `specs/`, and `plans/`
-- when there is any conflict, later accepted decisions override earlier discovery notes
-
-See also:
-- `.cursor/rules/assistant-agreement.mdc`
-
-## Naming Conventions
-
-Rules:
-- use English file names only
-- use `kebab-case` for general document files
-- keep `RFC` and `PRD` uppercase when they are part of a file name
-
-Examples:
-- `docs/discovery/requirements-scope-questions.md`
-- `docs/rfcs/RFC-001-architecture-options.md`
-- `docs/prd/PRD-snapinsight.md`
-- `docs/specs/api-spec.md`
-
-## Current Usage
-
-Current baseline discovery document:
-- `docs/discovery/requirements-scope-questions.md`
-
-Working agreement document:
-- `.cursor/rules/assistant-agreement.mdc`
+- [探索记录](discovery/)记录范围澄清和技术验证。
+- [首版需求与范围问答](discovery/requirements-scope-questions.md)保留项目启动时的讨论记录。当前产品要求见上方 PRD。
+- [开发与发布流程](product/release-process.md)和[商店发布清单](product/chrome-web-store-checklist.md)指导发布。
+- [兼容性](product/compatibility.md)、[隐私政策](product/privacy-policy.md)及[商店文案](product/store-listing.md)描述产品发布信息。
+- [产品资料](product/)和[文档资源](assets/)包括版本历史、说明及图片。

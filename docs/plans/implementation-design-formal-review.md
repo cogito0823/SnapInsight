@@ -1,8 +1,12 @@
 # SnapInsight Implementation Design Formal Review
 
-## Document Status
+- Type: record
+- Status: Implemented
+- Applicability: historical
+- Approval: none
+- Superseded-By: none
+- Historical source: `2674a9b630dca079b07dab266451ae7d3afd97f7:docs/plans/implementation-design-formal-review.md`. This document records its original implementation period.
 
-- Status: Approved
 - Project-Owner Sign-Off: Completed
 - Related Documents:
   - `docs/prd/PRD-snapinsight.md`

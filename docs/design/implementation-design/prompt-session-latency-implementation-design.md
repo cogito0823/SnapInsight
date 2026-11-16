@@ -1,6 +1,11 @@
 # Prompt Session Latency Implementation Design
 
+- Type: normative
 - Status: Approved
+- Applicability: current
+- Approval: [Approval record](../../plans/baseline-approvals.md#session-lifecycle)
+- Superseded-By: none
+
 - Related Documents:
   - `docs/rfcs/RFC-007-prompt-session-lifecycle-and-latency.md`
   - `docs/product/compatibility.md`

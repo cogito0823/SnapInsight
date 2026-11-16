@@ -1,0 +1,2 @@
+docs/governance/*.md text eol=lf
+scripts/governance/*.mjs text eol=lf

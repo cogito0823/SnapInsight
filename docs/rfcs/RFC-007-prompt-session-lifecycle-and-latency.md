@@ -1,6 +1,11 @@
 # RFC-007: Prompt Session Lifecycle and Latency
 
+- Type: normative
 - Status: Accepted
+- Applicability: current
+- Approval: [Approval record](../plans/baseline-approvals.md#session-lifecycle)
+- Superseded-By: none
+
 - Related Documents:
   - `docs/product/compatibility.md`
   - `docs/product/productization-validation.md`
@@ -13,10 +18,10 @@ SnapInsight runs Chrome's Prompt API directly in each page's Content Script.
 Chrome owns the downloaded model and its internal model runtime; the extension
 owns only `LanguageModelSession` objects created in a document context.
 
-The current request path checks `availability()`, creates a new session with the
-system prompt, generates one response, and immediately destroys the session.
-That is simple and isolated, but it makes every short explanation, detail
-request, and retry pay session-creation cost. It also presents availability
+The request path before this decision checked `availability()`, created a new
+session with the system prompt, generated one response, and immediately destroyed
+the session. Every short explanation, detail request and retry paid the session
+creation cost. The previous design presented availability
 checks, model-runtime wake-up, session creation, and first-token inference as
 one undifferentiated loading state.
 

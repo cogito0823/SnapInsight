@@ -1,8 +1,12 @@
 # RFC-006: Local Companion App Architecture
 
-## Document Status
-
+- Type: normative
 - Status: Draft
+- Applicability: historical
+- Approval: none
+- Superseded-By: none
+- Historical source: `2674a9b630dca079b07dab266451ae7d3afd97f7:docs/rfcs/RFC-006-local-companion-app-architecture.md`. This document records its original implementation period.
+
 - Related Documents:
   - `docs/prd/PRD-snapinsight.md`
   - `docs/discovery/local-companion-app-mvp.md`

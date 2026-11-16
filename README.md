@@ -112,6 +112,8 @@ release/     Local release artifacts (not tracked by Git)
 
 ## Contributing
 
+See the [project guide](docs/contributing.md) and [document index](docs/README.md) for repository rules and current implementation references.
+
 Issues and pull requests are welcome. Before submitting a change:
 
 1. Keep the extension's single-purpose, on-device privacy model intact.

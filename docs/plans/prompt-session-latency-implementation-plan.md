@@ -1,6 +1,12 @@
 # Prompt Session Latency Implementation Plan
 
+- Type: record
 - Status: Implemented
+- Applicability: historical
+- Approval: none
+- Superseded-By: none
+- Historical source: `2674a9b630dca079b07dab266451ae7d3afd97f7:docs/plans/prompt-session-latency-implementation-plan.md`. This document records its original implementation period.
+
 - Related Documents:
   - `docs/rfcs/RFC-007-prompt-session-lifecycle-and-latency.md`
   - `docs/design/implementation-design/prompt-session-latency-implementation-design.md`
@@ -30,10 +36,9 @@ changing SnapInsight's privacy or Service Worker boundaries.
   rebuilding the template.
 - [x] Warm up only after a visible valid selection remains stable for 300 ms.
 - [x] Prevent warm-up from triggering model download.
-- [x] Retain a used keeper for the visible document lifetime, keep the
-  15-second unused-warm-up TTL, and apply a 5-minute hidden-page grace period.
-- [x] Dispose idle resources after the hidden-page TTL and immediately on
-  `pagehide` or document-instance navigation.
+- [x] Keep the 15-second unused-warm-up TTL and dispose resources on `pagehide`
+  or document-instance navigation. The intermediate five-minute hidden grace
+  period is recorded below in the change history.
 - [x] Cancel pending session acquisition when an interaction is replaced or the
   card is closed.
 - [x] Explicitly cancel the stream reader when a stream ignores its AbortSignal.

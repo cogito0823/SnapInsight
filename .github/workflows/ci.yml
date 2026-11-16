@@ -14,6 +14,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  governance:
+    name: Project governance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Validate governance against the checked-out commit
+        run: node scripts/governance/check.mjs --mode commit
+      - name: Verify governance checker cases
+        run: node --test scripts/tests/governance.test.mjs
+
   extension:
     name: Extension checks
     runs-on: ubuntu-latest

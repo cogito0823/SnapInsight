@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "mode": "local",
+  "source": null,
+  "files": [
+    {
+      "sourcePath": "rules/documentation.md",
+      "targetPath": "docs/governance/documentation.md",
+      "sha256": "bff1dfc6fb022c8a41428b71793e7961f6606845bc3871047c0ea65438fa5871"
+    },
+    {
+      "sourcePath": "rules/workflow.md",
+      "targetPath": "docs/governance/workflow.md",
+      "sha256": "c1f364b5a55ee301f121137f97ac3e5f1d7080185d296fd7f710bd51e8fbce17"
+    },
+    {
+      "sourcePath": "checks/check.mjs",
+      "targetPath": "scripts/governance/check.mjs",
+      "sha256": "5a8ff4d2ad5a6938233d138d04cb978150502f3cd87b198d5f12e86f7878a5f2"
+    }
+  ]
+}
