@@ -1,8 +1,12 @@
 # RFC-003: Python Service and Ollama Integration
 
-## Document Status
+- Type: normative
+- Status: Superseded
+- Applicability: historical
+- Approval: none
+- Superseded-By: [Current reference](../design/extension-architecture.md)
+- Historical source: `2674a9b630dca079b07dab266451ae7d3afd97f7:docs/rfcs/RFC-003-python-service-and-ollama-integration.md`. This document records its original implementation period.
 
-- Status: Accepted
 - Related Documents:
   - `docs/prd/PRD-snapinsight.md`
   - `docs/discovery/technical-architecture-questions.md`

@@ -1,8 +1,12 @@
 # SnapInsight Repository and Code Structure Design
 
-## Document Status
+- Type: normative
+- Status: Superseded
+- Applicability: historical
+- Approval: none
+- Superseded-By: [Current reference](extension-architecture.md)
+- Historical source: `2674a9b630dca079b07dab266451ae7d3afd97f7:docs/design/repository-and-code-structure.md`. This document records its original implementation period.
 
-- Status: Approved
 - Related Documents:
   - `docs/rfcs/RFC-001-extension-architecture.md`
   - `docs/rfcs/RFC-002-local-communication-and-security.md`

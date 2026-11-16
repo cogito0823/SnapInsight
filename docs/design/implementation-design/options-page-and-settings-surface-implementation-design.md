@@ -1,8 +1,12 @@
 # SnapInsight Options Page and Settings Surface Implementation Design
 
-## Document Status
+- Type: normative
+- Status: Superseded
+- Applicability: historical
+- Approval: none
+- Superseded-By: [Current reference](../extension-architecture.md)
+- Historical source: `2674a9b630dca079b07dab266451ae7d3afd97f7:docs/design/implementation-design/options-page-and-settings-surface-implementation-design.md`. This document records its original implementation period.
 
-- Status: Approved
 - Project-Owner Sign-Off: Completed
 - Related Documents:
   - `docs/design/extension-and-local-service-design.md`

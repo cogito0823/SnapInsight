@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "entry": "AGENTS.md",
+  "guide": "docs/contributing.md",
+  "index": "docs/README.md",
+  "formalRoots": ["docs/prd", "docs/rfcs", "docs/design", "docs/specs", "docs/plans"],
+  "formalFiles": [],
+  "referenceRoots": ["docs/product"],
+  "referenceFiles": ["README.md", "README.zh-CN.md"],
+  "cursorBridge": false
+}

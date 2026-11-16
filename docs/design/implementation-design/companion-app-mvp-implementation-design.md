@@ -1,8 +1,12 @@
 # Companion App MVP Implementation Design
 
-## Document Status
-
+- Type: normative
 - Status: Draft
+- Applicability: historical
+- Approval: none
+- Superseded-By: none
+- Historical source: `2674a9b630dca079b07dab266451ae7d3afd97f7:docs/design/implementation-design/companion-app-mvp-implementation-design.md`. This document records its original implementation period.
+
 - Related Documents:
   - `docs/discovery/local-companion-app-mvp.md`
   - `docs/rfcs/RFC-006-local-companion-app-architecture.md`
