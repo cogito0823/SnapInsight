@@ -15,11 +15,12 @@ Local `main` at `2674a9b` identifies extension version 0.3.4. The shipped code u
 - 2026-11-17. The owner approved [RFC-008](../rfcs/RFC-008-shared-agent-project-governance.md). The documentation, shared rules, checker, PR template and CI configuration have been migrated. See the [rollout plan](shared-agent-governance-implementation-plan.md) and [multi-round review](shared-agent-governance-design-review.md#implementation-review).
 - 2026-11-17. The Chrome connection read the public repository. Fresh read-only Codex sessions used the shared rules from the repository root and `extension/`. The root instructions now explicitly anchor document paths to the Git root.
 - 2026-11-17. Rechecked all three legacy rule files against the shared rules. Restored omitted collaboration, RFC, approval, implementation and Python details. See the [rule parity review](shared-agent-governance-design-review.md#rule-parity-review).
+- 2026-11-17. GitHub Actions verified the governance migration at `d3d689b` in draft [PR #12](https://github.com/cogito0823/SnapInsight/pull/12). Both Project governance and Extension checks passed in the [CI run](https://github.com/cogito0823/SnapInsight/actions/runs/43947971819).
 
 ## Next work and unresolved items
 
 - Store release readiness. Validate outstanding device and navigation scenarios and verify the release archive and checksum. Store submission and review status remain unverified. See the [store checklist](../product/chrome-web-store-checklist.md).
-- Governance acceptance. Cursor testing is deferred at the owner's request. The candidate has no remote CI run. The latest recorded GitHub check showed remote `main` at `2674a9b` with no effective ruleset rules or branch protection. Configure and verify required checks once the candidate is on GitHub and the check name is available.
+- Governance acceptance. Cursor testing is deferred at the owner's request. The pre-PR GitHub check showed remote `main` at `2674a9b` with no effective ruleset rules or branch protection. Configuring and verifying required checks remains open.
 - Cross-project adoption. Reuse can be tested with a local fixture. Production adoption awaits a second real project.
 
 ## Historical evidence

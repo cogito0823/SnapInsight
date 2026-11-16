@@ -14,7 +14,7 @@
 
 ## 1. 执行状态
 
-2026-11-17 已完成本地文档与规则迁移、检查器和 CI 配置。Codex 从根目录和子目录加载规则的只读场景已通过。Cursor、其余行为场景、远端 CI 和合并保护以及第二项目采用仍待验收。结果详见[多轮复核记录](shared-agent-governance-design-review.md#implementation-review)。
+2026-11-17 已完成本地文档与规则迁移、检查器和 CI 配置。Codex 从根目录和子目录加载规则的只读场景已通过。[PR #12](https://github.com/cogito0823/SnapInsight/pull/12) 的候选治理变更已通过 GitHub Actions。Cursor 暂缓，合并保护和第二项目采用仍待验收。结果详见[多轮复核记录](shared-agent-governance-design-review.md#implementation-review)。
 
 ## 2. 阶段与交付
 
@@ -76,7 +76,7 @@
 - [x] 在隔离副本验证 Codex 修复文档链接、识别已替代的历史决策、说明未获批架构变更的处理，并区分本地与远端验证。
 - [ ] 完成 Cursor 加载验收及两种工具的其余适用行为场景。若实际支持版本需要兼容入口，按固定模板和 project.json 启用并重测。
 - [x] 当前/历史索引及旧规则引用通过本地检查。
-- [ ] 在 GitHub Actions 运行候选迁移的 CI 并记录结果。
+- [x] 在 GitHub Actions 验收候选 `d3d689b`。Project governance 和 Extension checks 均通过。[CI 运行记录](https://github.com/cogito0823/SnapInsight/actions/runs/43947971819)
 - [ ] 实际配置并核验 main required checks 和可用的评审保护；记录管理员绕过和单人评审边界。
 
 无法访问某工具或远端设置时记录“未验证”，完成可独立验证的部分；不得将整体状态写为已实施。

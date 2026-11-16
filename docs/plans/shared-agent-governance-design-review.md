@@ -7,7 +7,7 @@
 - Superseded-By: none
 
 - Review date: 2026-11-17
-- Review result: Local migration and Codex rule loading verified. Cursor behavioral acceptance and the candidate's GitHub checks remain pending.
+- Review result: Local migration, Codex rule loading, and GitHub Actions verified. Cursor behavioral acceptance and branch protection remain open.
 - Review type: Author self-review; not independent approval
 - Related Documents:
   - [RFC-008](../rfcs/RFC-008-shared-agent-project-governance.md)
@@ -219,3 +219,9 @@
 单独复查旧 `docs/README.md` 时，补明规格遵循已批准 PRD、设计及适用的已接受 RFC，实施与发布计划以已定决策为基础，同一范围内已接受的新决策优先于旧探索记录。文档索引恢复首版需求问答的入口，并标明其历史用途。
 
 再次逐条对照 `documentation.md` 和 `workflow.md` 后，补回正式评审的 `In Review` 阶段、没有有意义备选方案时通常免写 RFC 的默认规则、元数据位置和核心流程图的建议。流程条款也补明优先在探索文档收集答复，以及 PRD、架构、详细设计分别约束实施的哪些部分。RFC-008 已批准的任务分级及审批证据要求继续适用。
+
+### GitHub Actions 验收 — 2026-11-17
+
+- [草稿 PR #12](https://github.com/cogito0823/SnapInsight/pull/12) 从 `codex/document-governance` 向 `main` 提交治理迁移。
+- GitHub Actions 对候选 `d3d689be9918da362d19413405db4e5d19e14145` 的 [CI 运行](https://github.com/cogito0823/SnapInsight/actions/runs/43947971819) 通过。Project governance 通过仓库治理检查及测试。Extension checks 通过依赖安装、类型检查、测试和构建，并上传扩展产物。
+- 分支保护和 Cursor 仍按实施计划跟踪。
